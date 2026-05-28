@@ -270,6 +270,20 @@ async function webSearch(query, limit = 5) {
 function isNonEmptyString(v) {
   return typeof v === "string" && v.trim().length > 0;
 }
+function missingEnvForProvider(provider) {
+  const env = getEnv();
+  if (provider === "openai") {
+    const missing2 = [];
+    if (!env.OPENAI_API_KEY) missing2.push("OPENAI_API_KEY");
+    return missing2;
+  }
+  const missing = [];
+  if (!env.AWS_REGION) missing.push("AWS_REGION");
+  if (!env.BEDROCK_MODEL_ID) missing.push("BEDROCK_MODEL_ID");
+  if (!env.AWS_ACCESS_KEY_ID) missing.push("AWS_ACCESS_KEY_ID");
+  if (!env.AWS_SECRET_ACCESS_KEY) missing.push("AWS_SECRET_ACCESS_KEY");
+  return missing;
+}
 function hasLocationHint(s) {
   return /\b(in|near|around)\b\s+[a-z]/i.test(s) || /\b(ct|ma|ny|ri|nh|vt)\b/i.test(s) || /\b(remote)\b/i.test(s.toLowerCase());
 }
@@ -343,13 +357,22 @@ chatRouter.post("/", async (req, res) => {
   if (!body || !Array.isArray(body.messages) || !isNonEmptyString(body.language)) {
     return sendError(res, 400, "Invalid request. Expected { messages: [...], language: string }.");
   }
+  const aiProvider = getAiProvider();
+  const missing = missingEnvForProvider(aiProvider);
+  if (missing.length) {
+    console.error(`[chat] Missing env vars for provider=${aiProvider}:`, missing.join(", "));
+    return res.status(500).json({
+      error: "Missing required environment variable",
+      missing,
+      provider: aiProvider
+    });
+  }
   const messages = body.messages.filter((m) => m && (m.role === "user" || m.role === "assistant") && isNonEmptyString(m.content)).slice(-30);
   if (messages.length === 0) {
     return sendError(res, 400, "Please provide at least one message.");
   }
   const lastUser = [...messages].reverse().find((m) => m.role === "user")?.content ?? "";
   const intent = lastUser ? detectSearchIntent(lastUser) : { kind: "none" };
-  const aiProvider = getAiProvider();
   const docOnly = Boolean(lastUser && isExplicitDocumentRequest(lastUser));
   const systemDocOnly = docOnly ? "\n\nIf the user requests a resume, CV, cover letter, or any written document, output ONLY the document text. Do NOT include any introduction, preface, commentary, or closing lines (no \u201CSure\u2026\u201D, no \u201CHere is\u2026\u201D, no \u201CFeel free\u2026\u201D, no \u201CWould you like help\u2026\u201D). Do not ask questions. The output must start immediately with the document content." : "";
   const searchSystemSuffix = intent.kind === "jobs" || intent.kind === "events" || intent.kind === "general" ? "\n\nIf a user request requires fresh/local/time-sensitive information, ask 1\u20132 clarifying questions before searching. When you do provide results, include only links that came from the web search context provided to you. Do not fabricate events, dates, locations, or pretend you searched if no results were provided." : "";
@@ -749,6 +772,7 @@ function createApp() {
 }
 
 // server/vercel.ts
+var runtime = "nodejs";
 var app = createApp();
 function handler(req, res) {
   try {
@@ -767,5 +791,6 @@ function handler(req, res) {
   }
 }
 export {
-  handler as default
+  handler as default,
+  runtime
 };

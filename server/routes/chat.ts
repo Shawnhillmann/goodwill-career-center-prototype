@@ -17,6 +17,22 @@ function isNonEmptyString(v: unknown): v is string {
   return typeof v === 'string' && v.trim().length > 0
 }
 
+function missingEnvForProvider(provider: 'openai' | 'bedrock') {
+  const env = getEnv()
+  if (provider === 'openai') {
+    const missing: string[] = []
+    if (!env.OPENAI_API_KEY) missing.push('OPENAI_API_KEY')
+    return missing
+  }
+
+  const missing: string[] = []
+  if (!env.AWS_REGION) missing.push('AWS_REGION')
+  if (!env.BEDROCK_MODEL_ID) missing.push('BEDROCK_MODEL_ID')
+  if (!env.AWS_ACCESS_KEY_ID) missing.push('AWS_ACCESS_KEY_ID')
+  if (!env.AWS_SECRET_ACCESS_KEY) missing.push('AWS_SECRET_ACCESS_KEY')
+  return missing
+}
+
 type SearchIntent =
   | { kind: 'none' }
   | { kind: 'jobs'; query: string; needsClarification: boolean; questions: string[] }
@@ -138,6 +154,18 @@ chatRouter.post('/', async (req, res) => {
     return sendError(res, 400, 'Invalid request. Expected { messages: [...], language: string }.')
   }
 
+  const aiProvider = getAiProvider()
+  const missing = missingEnvForProvider(aiProvider)
+  if (missing.length) {
+    // eslint-disable-next-line no-console
+    console.error(`[chat] Missing env vars for provider=${ aiProvider }:`, missing.join(', '))
+    return res.status(500).json({
+      error: 'Missing required environment variable',
+      missing,
+      provider: aiProvider,
+    })
+  }
+
   const messages = body.messages
     .filter((m) => m && (m.role === 'user' || m.role === 'assistant') && isNonEmptyString(m.content))
     .slice(-30)
@@ -152,7 +180,6 @@ chatRouter.post('/', async (req, res) => {
   // is localized and consistent (no hard-coded assistant text). We only use webSearch()
   // to retrieve fresh data and pass it back into the model.
 
-  const aiProvider = getAiProvider()
   const docOnly = Boolean(lastUser && isExplicitDocumentRequest(lastUser))
   const systemDocOnly = docOnly
     ? '\n\nIf the user requests a resume, CV, cover letter, or any written document, output ONLY the document text. Do NOT include any introduction, preface, commentary, or closing lines (no “Sure…”, no “Here is…”, no “Feel free…”, no “Would you like help…”). Do not ask questions. The output must start immediately with the document content.'

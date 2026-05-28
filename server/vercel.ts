@@ -1,6 +1,9 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
 import { createApp } from './app.js'
 
+// Ensure Vercel uses Node runtime (not Edge).
+export const runtime = 'nodejs'
+
 const app = createApp()
 
 export default function handler(req: VercelRequest, res: VercelResponse) {

@@ -124,10 +124,15 @@ export function CareerAdvisorCard({ language, readAloudEnabled }: CareerAdvisorC
           json = null
         }
         if (!resp.ok) {
-          const base =
-            json?.error?.message ??
+          const fallbackBase =
             'Sorry — I’m having trouble responding right now. Please try again in a moment.'
-          const details = typeof json?.error?.details === 'string' ? json.error.details : ''
+          const base = (typeof json?.error === 'string' ? json.error : json?.error?.message) ?? fallbackBase
+          const details =
+            typeof json?.error?.details === 'string'
+              ? json.error.details
+              : Array.isArray(json?.missing)
+                ? `Missing: ${ json.missing.join(', ') }`
+                : ''
           const status = `HTTP ${ resp.status }`
           const hint =
             details ||
