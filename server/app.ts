@@ -38,6 +38,20 @@ export function createApp() {
   app.use('/api/upload', uploadRouter)
   app.use('/api/document', documentRouter)
 
+  // Always return JSON for unhandled server errors (important for serverless).
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  app.use((err: unknown, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
+    // eslint-disable-next-line no-console
+    console.error('[api] Unhandled error:', err)
+    const message = err instanceof Error ? err.message : 'Server error'
+    res.status(500).json({
+      error: {
+        message: 'A server error has occurred',
+        details: message,
+      },
+    })
+  })
+
   return app
 }
 
