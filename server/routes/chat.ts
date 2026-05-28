@@ -36,22 +36,15 @@ function missingEnvForProvider(provider: 'openai' | 'bedrock') {
 
 type SearchIntent =
   | { kind: 'none' }
-  | { kind: 'jobs'; query: string; needsClarification: boolean; questions: string[] }
-  | { kind: 'events'; query: string; needsClarification: boolean; questions: string[] }
-  | { kind: 'general'; query: string; needsClarification: boolean; questions: string[] }
+  | { kind: 'jobs'; query: string; needsClarification: boolean }
+  | { kind: 'events'; query: string; needsClarification: boolean }
+  | { kind: 'general'; query: string; needsClarification: boolean }
 
 function hasLocationHint(s: string) {
   return (
     /\b(in|near|around)\b\s+[a-z]/i.test(s) ||
     /\b(ct|ma|ny|ri|nh|vt)\b/i.test(s) ||
     /\b(remote)\b/i.test(s.toLowerCase())
-  )
-}
-
-function hasTimeHint(s: string) {
-  return (
-    /\b(today|tomorrow|this week|this month|next week|next month|upcoming)\b/i.test(s) ||
-    /\b(20\d{2})\b/.test(s)
   )
 }
 
@@ -78,20 +71,14 @@ function detectSearchIntent(q: string): SearchIntent {
     const hasLocation = hasLocationHint(s)
     const hasRoleKeyword = /\b(retail|cashier|sales|warehouse|driver|manager|customer service|associate)\b/i.test(s)
     const needsClarification = !(hasLocation && hasRoleKeyword)
-    const questions: string[] = []
-    if (!hasRoleKeyword) questions.push('What kind of role are you looking for (e.g., cashier, sales associate, store manager, warehouse, customer service)?')
-    if (!hasLocation) questions.push('What location should I search (city + state, or “remote”)?')
-    return { kind: 'jobs', query: s, needsClarification, questions: questions.slice(0, 2) }
+    return { kind: 'jobs', query: s, needsClarification }
   }
 
   // Events / local resources (fresh/local data)
   if ((hasFindIntent || explicitSearch || hasEventIntent || hasLocalResourceIntent) && (hasEventIntent || hasLocalResourceIntent)) {
     const hasLocation = hasLocationHint(s)
     const needsClarification = !hasLocation
-    const questions: string[] = []
-    if (!hasLocation) questions.push('What city + state should I search?')
-    if (!hasTimeHint(s)) questions.push('What timeframe should I search (e.g., “this month”, a specific date range, or “this weekend”)?')
-    return { kind: 'events', query: s, needsClarification, questions: questions.slice(0, 2) }
+    return { kind: 'events', query: s, needsClarification }
   }
 
   // General explicit web search
@@ -99,10 +86,7 @@ function detectSearchIntent(q: string): SearchIntent {
     const cleaned = s.replace(/\b(web\s*search|google|search\s+the\s+web|look\s+this\s+up)\b/i, '').trim()
     const query = cleaned || s
     const needsClarification = query.length < 6
-    const questions = needsClarification
-      ? ['What exactly should I look up on the web?', 'Are you looking to buy something, find a local place, or just get information?']
-      : []
-    return { kind: 'general', query, needsClarification, questions: questions.slice(0, 2) }
+    return { kind: 'general', query, needsClarification }
   }
 
   return { kind: 'none' }
@@ -236,10 +220,20 @@ chatRouter.post('/', async (req, res) => {
         !intent.needsClarification
 
       if ((intent.kind === 'jobs' || intent.kind === 'events' || intent.kind === 'general') && intent.needsClarification) {
-        // Ask 1–2 clarifying questions before searching.
-        const questions = 'questions' in intent ? intent.questions : []
-        const prompt = questions.length ? questions.join('\n') : 'Can you share your location and timeframe?'
-        return res.json({ reply: prompt })
+        // No hard-coded assistant copy: ask the model to ask 1–2 clarifying questions in the user’s language.
+        const clarifyInstructions =
+          system +
+          '\n\nThe user asked for live/local/time-sensitive information, but the request is underspecified.' +
+          '\nAsk ONLY 1–2 short clarifying questions (no search yet).'
+
+        const reply = await invokeOpenAiChat({
+          apiKey,
+          model,
+          system: clarifyInstructions,
+          messages,
+        })
+
+        return res.json({ reply: reply.trim() })
       }
 
       if (isLiveInfoIntent) {
