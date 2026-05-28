@@ -46,7 +46,7 @@ module.exports = async function vercelHandler(req, res) {
         ok: true,
         aiProvider,
         openaiConfigured: envBool('OPENAI_API_KEY'),
-        openaiModel: envBool('OPENAI_API_KEY') ? process.env.OPENAI_MODEL || 'gpt-4o-mini' : null,
+        openaiModel: envBool('OPENAI_API_KEY') ? process.env.OPENAI_MODEL || 'gpt-5-mini' : null,
       })
     }
 

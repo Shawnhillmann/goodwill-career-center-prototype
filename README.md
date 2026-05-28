@@ -36,7 +36,7 @@ PORT=8787
 ```bash
 AI_PROVIDER=openai
 OPENAI_API_KEY=your_openai_api_key
-OPENAI_MODEL=gpt-4o-mini
+OPENAI_MODEL=gpt-5-mini
 PORT=8787
 ```
 
@@ -94,7 +94,7 @@ The frontend and API deploy together. `npm run build` bundles the Express API in
 ```bash
 AI_PROVIDER=openai
 OPENAI_API_KEY=your_openai_api_key
-OPENAI_MODEL=gpt-4o-mini
+OPENAI_MODEL=gpt-5-mini
 ```
 
 Redeploy after changing env vars. Verify: `https://<your-app>.vercel.app/api/health` should return JSON with `"aiProvider": "openai"` and `"openaiConfigured": true`.
