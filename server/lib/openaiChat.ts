@@ -15,7 +15,8 @@ export async function invokeOpenAiChat(params: {
     body: JSON.stringify({
       model: params.model,
       temperature: 0.4,
-      max_tokens: 800,
+      // Newer OpenAI models (e.g. gpt-5-mini) use max_completion_tokens instead of max_tokens.
+      max_completion_tokens: 800,
       messages: [
         { role: 'system', content: params.system },
         ...params.messages.map((m) => ({ role: m.role, content: m.content })),
