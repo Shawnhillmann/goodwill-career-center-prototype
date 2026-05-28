@@ -4,7 +4,6 @@ import { getAiProvider, getOpenAiConfig } from './lib/aiProvider.js'
 import { getEnv } from './lib/env.js'
 import { chatRouter } from './routes/chat.js'
 import { documentRouter } from './routes/document.js'
-import { uploadRouter } from './routes/upload.js'
 
 export function createApp() {
   const app = express()
@@ -48,7 +47,16 @@ export function createApp() {
   })
 
   app.use('/api/chat', chatRouter)
-  app.use('/api/upload', uploadRouter)
+  // Lazy-load upload route so Node-only PDF parsing libs don't load for plain chat requests.
+  // This prevents serverless startup crashes when optional PDF dependencies require DOM APIs.
+  app.use('/api/upload', async (req, res, next) => {
+    try {
+      const mod = await import('./routes/upload.js')
+      return mod.uploadRouter(req, res, next)
+    } catch (err) {
+      next(err)
+    }
+  })
   app.use('/api/document', documentRouter)
 
   // Always return JSON for unhandled server errors (important for serverless).
