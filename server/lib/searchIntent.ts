@@ -1,4 +1,5 @@
 import type { ChatMessage } from './advisorPrompt.js'
+import { matchStarterPrompt } from './starterPrompts.js'
 
 export type SearchIntent =
   | { kind: 'none' }
@@ -55,7 +56,8 @@ export function hasLocationHint(s: string): boolean {
     US_STATE_ABBR.test(s) ||
     /\b,\s*(me|or|in)\b/i.test(s) ||
     /\b(remote|hybrid|on[\s-]?site|in[\s-]?person)\b/i.test(lower) ||
-    /\b(near me|nearby|around me|local)\b/i.test(lower) ||
+    /\b(near me|nearby|around me)\b/i.test(lower) ||
+    /\blocal\s+(to me|near me|in my area)\b/i.test(lower) ||
     /\b([a-z][a-z]+(?:\s+[a-z][a-z]+)?),\s*[a-z]{2}\b/i.test(s)
   )
 }
@@ -102,16 +104,26 @@ function hasJobSearchSignals(lower: string, original: string): boolean {
   return false
 }
 
+function isCareerExplorationQuery(lower: string): boolean {
+  return (
+    /\bexplore\s+(career|options)\b/.test(lower) ||
+    /\bcareer\s+options\b/.test(lower) ||
+    /\bwhat\s+career\b/.test(lower) ||
+    /\bcareer\s+path\b/.test(lower)
+  )
+}
+
 export function detectSearchIntent(q: string): SearchIntent {
   const s = q.trim()
   const lower = s.toLowerCase()
   if (!s) return { kind: 'none' }
+  if (matchStarterPrompt(s)) return { kind: 'none' }
   if (isDocumentOrCoachingTask(s)) return { kind: 'none' }
   if (lower.includes('http://') || lower.includes('https://')) return { kind: 'none' }
 
   const explicitSearch = EXPLICIT_WEB.test(lower)
   const hasFindIntent = FIND_VERB.test(lower)
-  const jobSignals = hasJobSearchSignals(lower, s)
+  const jobSignals = !isCareerExplorationQuery(lower) && hasJobSearchSignals(lower, s)
   const eventSignals = EVENT_SIGNAL.test(lower) || LOCAL_RESOURCE_SIGNAL.test(lower)
 
   if (jobSignals || (hasFindIntent && /\b(hiring|work)\b/.test(lower))) {
@@ -168,6 +180,7 @@ function buildCombinedJobQuery(messages: ChatMessage[], latestAnswer: string): s
 }
 
 export function resolveEffectiveSearchIntent(messages: ChatMessage[], lastUser: string): SearchIntent {
+  if (matchStarterPrompt(lastUser)) return { kind: 'none' }
   if (isDocumentOrCoachingTask(lastUser)) return { kind: 'none' }
 
   const direct = detectSearchIntent(lastUser)

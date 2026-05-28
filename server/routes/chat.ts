@@ -26,6 +26,7 @@ import { invokeOpenAiResponsesText } from '../lib/openaiResponses.js'
 
 import { buildClarifyInstructions } from '../lib/responseStyle.js'
 import { isLiveSearchIntent, resolveEffectiveSearchIntent, type SearchIntent } from '../lib/searchIntent.js'
+import { matchStarterPrompt, STARTER_TURN_INSTRUCTIONS } from '../lib/starterPrompts.js'
 
 import { appendWebGroundingToInstructions, formatWebResultsForInstructions } from '../lib/webGrounding.js'
 
@@ -87,11 +88,14 @@ function missingEnvForProvider(provider: 'openai' | 'bedrock') {
 
 
 
-function isExplicitDocumentRequest(q: string): boolean {
+function isExplicitDocumentRequest(q: string, hasUploadedDocument: boolean): boolean {
+  if (matchStarterPrompt(q)) return false
   const s = q.toLowerCase()
   const doc = /\b(resume|résumé|cv|curriculum vitae|cover letter)\b/
   const action = /\b(write|draft|generate|create|format|rewrite|revise|tailor|update|improve|edit|fix)\b/
-  return doc.test(s) && (action.test(s) || /\btailored\b/.test(s))
+  if (!doc.test(s) || (!action.test(s) && !/\btailored\b/.test(s))) return false
+  if (!hasUploadedDocument && /\b(write|create|draft|build)\s+(my\s+)?(resume|cv)\b/.test(s)) return false
+  return true
 }
 
 
@@ -178,7 +182,9 @@ chatRouter.post('/', async (req, res) => {
 
 
 
-  const docOnly = Boolean(lastUser && isExplicitDocumentRequest(lastUser))
+  const starterKind = lastUser ? matchStarterPrompt(lastUser) : null
+
+  const docOnly = Boolean(lastUser && isExplicitDocumentRequest(lastUser, hasUploadedDocument))
 
   const systemDocOnly = docOnly
 
@@ -264,25 +270,47 @@ chatRouter.post('/', async (req, res) => {
 
           : intent
 
+      const reliableChatModel = selectChatModel({ hasUploadedDocument: true, isLiveWebSearch: false })
 
+      if (starterKind) {
+        logChat('route_starter', { starterKind })
+        const starterResult = await invokeOpenAiResponsesText({
+          apiKey,
+          model: reliableChatModel,
+          instructions: `${ system }\n\n${ STARTER_TURN_INSTRUCTIONS[starterKind] }`,
+          messages,
+          maxOutputTokens: 500,
+        })
+        const starterReply = starterResult.text.trim()
+        if (!starterReply) {
+          return sendError(res, 502, 'The AI did not return a response. Please try again.')
+        }
+        logChat('request_complete', {
+          path: 'starter',
+          starterKind,
+          model: reliableChatModel,
+          latencyMs: Date.now() - requestStarted,
+          replyLength: starterReply.length,
+        })
+        return res.json({ reply: starterReply })
+      }
 
       if (
         isLiveSearchIntent(effectiveIntent) &&
         effectiveIntent.needsClarification &&
-        !isExplicitDocumentRequest(lastUser)
+        !isExplicitDocumentRequest(lastUser, hasUploadedDocument)
       ) {
         logChat('route_clarify', {
           intentKind: effectiveIntent.kind,
           queryLength: effectiveIntent.query.length,
         })
 
-        const clarifyModel = selectChatModel({ hasUploadedDocument, isLiveWebSearch: false })
         const clarifyResult = await invokeOpenAiResponsesText({
           apiKey,
-          model: clarifyModel,
+          model: reliableChatModel,
           instructions: buildClarifyInstructions(system),
           messages,
-          maxOutputTokens: 120,
+          maxOutputTokens: 450,
         })
 
         const clarifyReply = clarifyResult.text.trim()
@@ -292,7 +320,7 @@ chatRouter.post('/', async (req, res) => {
 
         logChat('request_complete', {
           path: 'clarify',
-          model: clarifyModel,
+          model: reliableChatModel,
           latencyMs: Date.now() - requestStarted,
           replyLength: clarifyReply.length,
         })
@@ -508,11 +536,13 @@ chatRouter.post('/', async (req, res) => {
 
   const modelId = getEnv().BEDROCK_MODEL_ID ?? ''
 
-
+  const bedrockSystem = starterKind
+    ? `${ system }\n\n${ STARTER_TURN_INSTRUCTIONS[starterKind] }`
+    : system
 
   try {
 
-    const reply = (await invokeBedrockChat({ system, messages })).trim()
+    const reply = (await invokeBedrockChat({ system: bedrockSystem, messages })).trim()
 
 
 

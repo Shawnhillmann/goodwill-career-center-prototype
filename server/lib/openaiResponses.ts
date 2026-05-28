@@ -133,7 +133,7 @@ export async function invokeOpenAiResponsesText(params: {
       model: params.model,
       instructions: params.instructions,
       input: params.messages.map((m) => ({ role: m.role, content: m.content })),
-      max_output_tokens: params.maxOutputTokens ?? 400,
+      max_output_tokens: params.maxOutputTokens ?? 500,
     },
     params.apiKey,
   )
