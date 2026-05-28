@@ -12,6 +12,8 @@ type ResponsesCreateResult = {
   output?: ResponsesOutputItem[]
 }
 
+type UrlCitation = { url: string; title?: string }
+
 function extractOutputText(json: ResponsesCreateResult): string {
   if (typeof json.output_text === 'string' && json.output_text.trim()) return json.output_text
   const output = Array.isArray(json.output) ? json.output : []
@@ -23,6 +25,29 @@ function extractOutputText(json: ResponsesCreateResult): string {
     }
   }
   return texts.join('\n').trim()
+}
+
+function extractUrlCitations(json: ResponsesCreateResult): UrlCitation[] {
+  const output = Array.isArray(json.output) ? json.output : []
+  const urls: UrlCitation[] = []
+  const seen = new Set<string>()
+
+  for (const item of output) {
+    const content = Array.isArray((item as any)?.content) ? (item as any).content : []
+    for (const c of content) {
+      const annotations = Array.isArray(c?.annotations) ? c.annotations : []
+      for (const a of annotations) {
+        if (a?.type !== 'url_citation') continue
+        const url = typeof a?.url === 'string' ? a.url : ''
+        if (!url || seen.has(url)) continue
+        seen.add(url)
+        const title = typeof a?.title === 'string' ? a.title : undefined
+        urls.push({ url, title })
+      }
+    }
+  }
+
+  return urls
 }
 
 export async function invokeOpenAiResponsesWebSearch(params: {
@@ -62,6 +87,14 @@ export async function invokeOpenAiResponsesWebSearch(params: {
   }
 
   const json = JSON.parse(raw) as ResponsesCreateResult
-  return extractOutputText(json)
+  const text = extractOutputText(json)
+  const citations = extractUrlCitations(json)
+
+  if (!citations.length) return text
+  const sources = citations
+    .slice(0, 8)
+    .map((c) => `- ${ c.title ? `[${ c.title }](${ c.url })` : c.url }`)
+    .join('\n')
+  return `${ text }\n\nSources:\n${ sources }`
 }
 

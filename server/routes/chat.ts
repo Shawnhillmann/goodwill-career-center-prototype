@@ -57,6 +57,7 @@ function detectSearchIntent(q: string): SearchIntent {
   const explicitSearch = /\b(web\s*search|google|search\s+the\s+web|look\s+this\s+up)\b/.test(lower)
   const hasFindIntent = /\b(find|search|look\s*up|show\s*me)\b/.test(lower)
   const hasJobIntent = /\b(job|jobs|opening|openings|hiring|apply|positions|listings)\b/.test(lower)
+  const hasJobishIntent = /\b(listed positions?|open roles?|who('?| i)s hiring|hiring now)\b/.test(lower)
   const hasEventIntent =
     /\b(job fair|job fairs|career fair|career fairs|hiring event|hiring events|career expo|job expo|recruiting event|recruiting events|job festival|career event|career events)\b/.test(
       lower,
@@ -67,7 +68,7 @@ function detectSearchIntent(q: string): SearchIntent {
     )
 
   // Jobs
-  if ((hasFindIntent || explicitSearch) && hasJobIntent) {
+  if ((hasFindIntent || explicitSearch) && (hasJobIntent || hasJobishIntent)) {
     const hasLocation = hasLocationHint(s)
     const hasRoleKeyword = /\b(retail|cashier|sales|warehouse|driver|manager|customer service|associate)\b/i.test(s)
     const needsClarification = !(hasLocation && hasRoleKeyword)
@@ -215,11 +216,21 @@ chatRouter.post('/', async (req, res) => {
     }
 
     try {
-      const isLiveInfoIntent =
-        (intent.kind === 'jobs' || intent.kind === 'events' || intent.kind === 'general') &&
-        !intent.needsClarification
+      const lastFewUser = [...messages].reverse().filter((m) => m.role === 'user').slice(0, 4).map((m) => m.content.toLowerCase())
+      const convoJobContext = lastFewUser.some((t) => /\b(job|jobs|hiring|openings|apply|positions?)\b/.test(t))
+      const explicitSearchAsk = /\b(web\s*search|search\s+the\s+web|look\s+this\s+up|use the web)\b/i.test(lastUser)
 
-      if ((intent.kind === 'jobs' || intent.kind === 'events' || intent.kind === 'general') && intent.needsClarification) {
+      // If the user explicitly asks to use the web and we have job context, treat it as a jobs search even if phrasing is vague.
+      const effectiveIntent: SearchIntent =
+        intent.kind === 'none' && explicitSearchAsk && convoJobContext
+          ? { kind: 'jobs', query: lastUser, needsClarification: !hasLocationHint(lastUser) }
+          : intent
+
+      const isLiveInfoIntent =
+        (effectiveIntent.kind === 'jobs' || effectiveIntent.kind === 'events' || effectiveIntent.kind === 'general') &&
+        !effectiveIntent.needsClarification
+
+      if ((effectiveIntent.kind === 'jobs' || effectiveIntent.kind === 'events' || effectiveIntent.kind === 'general') && effectiveIntent.needsClarification) {
         // No hard-coded assistant copy: ask the model to ask 1–2 clarifying questions in the user’s language.
         const clarifyInstructions =
           system +
@@ -238,13 +249,14 @@ chatRouter.post('/', async (req, res) => {
 
       if (isLiveInfoIntent) {
         // eslint-disable-next-line no-console
-        console.log('[chat] OpenAI web_search:', intent.kind, intent.query)
+        console.log('[chat] OpenAI web_search:', effectiveIntent.kind, effectiveIntent.query)
 
         const searchModel = model || 'gpt-5.5'
         const instructions =
           system +
           '\n\nUse live web search results to answer. Never fabricate listings, events, dates, locations, or companies.' +
-          '\nInclude source links when possible. Prefer a short structured list (title/company/location/date + link) when relevant.'
+          '\nReturn 3–5 concrete items when possible (job listings or events), each with: title, company/organization, location, and a direct link.' +
+          '\nIf you cannot find concrete listings, say so and provide the best next search query to try.'
 
         const reply = await invokeOpenAiResponsesWebSearch({
           apiKey,
