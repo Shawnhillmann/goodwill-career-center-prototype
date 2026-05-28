@@ -85,6 +85,22 @@ Check the server terminal for the Bedrock error.
 | “on-demand throughput isn’t supported” | Use the **inference profile id** (`us.anthropic.…`), not the raw `anthropic.…` model id |
 | `AccessDeniedException` | Enable model access + `bedrock:InvokeModel` in IAM |
 
+## Deploy on Vercel
+
+The frontend and API deploy together. `npm run build` bundles the Express API into `api/index.js` for Vercel Serverless Functions.
+
+**Environment variables** (Vercel → Project → Settings → Environment Variables):
+
+```bash
+AI_PROVIDER=openai
+OPENAI_API_KEY=your_openai_api_key
+OPENAI_MODEL=gpt-4o-mini
+```
+
+Redeploy after changing env vars. Verify: `https://<your-app>.vercel.app/api/health` should return JSON with `"aiProvider": "openai"` and `"openaiConfigured": true`.
+
+Locally, the API runs as a separate Express process (`npm run server`); on Vercel it runs as one bundled serverless function. That is why a working local dev setup can still fail on Vercel if the API bundle step did not run.
+
 ## API endpoints
 
 - `POST /api/chat`

@@ -20,18 +20,31 @@ export function createApp() {
   app.use(express.json({ limit: '1mb' }))
 
   app.get('/api/health', (_req, res) => {
-    const aiProvider = getAiProvider()
-    const env = getEnv()
-    const openAi = getOpenAiConfig()
-    res.json({
-      ok: true,
-      aiProvider,
-      openaiConfigured: Boolean(openAi.apiKey),
-      openaiModel: openAi.apiKey ? openAi.model : null,
-      bedrockConfigured: Boolean(env.AWS_REGION && env.BEDROCK_MODEL_ID),
-      region: env.AWS_REGION ?? null,
-      modelId: env.BEDROCK_MODEL_ID ? '(set)' : null,
-    })
+    try {
+      const aiProvider = getAiProvider()
+      const env = getEnv()
+      const openAi = getOpenAiConfig()
+      const openaiReady = Boolean(openAi.apiKey)
+      res.json({
+        ok: true,
+        runtime: 'vercel-serverless',
+        aiProvider,
+        openaiConfigured: openaiReady,
+        openaiModel: openaiReady ? openAi.model : null,
+        bedrockConfigured: Boolean(env.AWS_REGION && env.BEDROCK_MODEL_ID),
+        region: env.AWS_REGION ?? null,
+        modelId: env.BEDROCK_MODEL_ID ? '(set)' : null,
+        ...(aiProvider === 'openai' && !openaiReady
+          ? {
+              warning:
+                'AI_PROVIDER is openai but OPENAI_API_KEY is not set. Add it in Vercel → Settings → Environment Variables.',
+            }
+          : {}),
+      })
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Health check failed'
+      res.status(500).json({ ok: false, error: { message, details: message } })
+    }
   })
 
   app.use('/api/chat', chatRouter)

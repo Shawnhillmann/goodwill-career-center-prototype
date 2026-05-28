@@ -7,7 +7,8 @@
     "dev": "vite",
     "server": "cross-env PORT=8787 tsx watch server/index.ts",
     "dev:all": "concurrently -k -n \"server,web\" -c \"cyan,magenta\" \"npm run server\" \"npm run dev\"",
-    "build": "tsc && vite build",
+    "build": "tsc && vite build && node scripts/build-vercel-api.mjs",
+    "build:api": "node scripts/build-vercel-api.mjs",
     "preview": "vite preview"
   },
   "devDependencies": {
@@ -22,6 +23,7 @@
     "concurrently": "^9.2.1",
     "cross-env": "^10.1.0",
     "@vercel/node": "^5.3.7",
+    "esbuild": "^0.25.0",
     "tsx": "^4.22.3",
     "typescript": "~6.0.2",
     "vite": "^8.0.12"
