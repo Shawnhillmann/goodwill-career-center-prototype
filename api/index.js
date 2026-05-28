@@ -374,6 +374,7 @@ chatRouter.post("/", async (req, res) => {
   if (aiProvider === "openai") {
     const { apiKey, model } = getOpenAiConfig();
     if (!apiKey) {
+      console.error("[chat] OPENAI_API_KEY is not set while AI_PROVIDER=openai");
       return sendError(
         res,
         500,

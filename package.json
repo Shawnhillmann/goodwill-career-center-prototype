@@ -19,14 +19,14 @@
     "@types/pdfkit": "^0.17.6",
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
-    "@vitejs/plugin-react": "^6.0.1",
+    "@vitejs/plugin-react": "6.0.1",
     "concurrently": "^9.2.1",
     "cross-env": "^10.1.0",
-    "@vercel/node": "^5.3.7",
-    "esbuild": "^0.28.0",
+    "@vercel/node": "5.8.6",
+    "esbuild": "0.28.0",
     "tsx": "^4.22.3",
-    "typescript": "~6.0.2",
-    "vite": "^8.0.12"
+    "typescript": "6.0.2",
+    "vite": "8.0.12"
   },
   "dependencies": {
     "@aws-sdk/client-bedrock-runtime": "^3.1053.0",
