@@ -24,6 +24,7 @@ import { selectChatModel } from '../lib/openaiModels.js'
 
 import { invokeOpenAiResponsesText } from '../lib/openaiResponses.js'
 
+import { buildClarifyInstructions } from '../lib/responseStyle.js'
 import { isLiveSearchIntent, resolveEffectiveSearchIntent, type SearchIntent } from '../lib/searchIntent.js'
 
 import { appendWebGroundingToInstructions, formatWebResultsForInstructions } from '../lib/webGrounding.js'
@@ -97,30 +98,6 @@ function isExplicitDocumentRequest(q: string): boolean {
     /\bcover letter\b/.test(s) ||
 
     (/\b(write|draft|generate|create|format)\b/.test(s) && /\b(resume|résumé|cv|cover letter|letter)\b/.test(s))
-
-  )
-
-}
-
-
-
-function liveSearchInstructionExtras(intent: SearchIntent): string {
-
-  if (!isLiveSearchIntent(intent)) return ''
-
-  const broad =
-
-    intent.needsClarification
-
-      ? '\n\nThe user query is broad or missing detail; run the widest reasonable search first, share the best matches, then ask at most ONE optional refinement question at the end.'
-
-      : ''
-
-  return (
-
-    '\n\nWhen you provide live search results, include only links grounded in retrieved data. Do not fabricate events, dates, locations, or pretend you searched if no results were provided.' +
-
-    broad
 
   )
 
@@ -220,15 +197,13 @@ chatRouter.post('/', async (req, res) => {
 
 
 
-  const searchSuffix = liveSearchInstructionExtras(intent)
-
-  let system = buildSystemPrompt(body.language, body.uploadedDocumentText) + systemDocOnly + searchSuffix
+  let system = buildSystemPrompt(body.language, body.uploadedDocumentText) + systemDocOnly
 
 
 
   // Bedrock: optional DuckDuckGo prefetch injected into system instructions (not fake assistant turns).
 
-  if (aiProvider === 'bedrock' && isLiveSearchIntent(intent)) {
+  if (aiProvider === 'bedrock' && isLiveSearchIntent(intent) && !intent.needsClarification) {
 
     try {
 
@@ -299,6 +274,34 @@ chatRouter.post('/', async (req, res) => {
           : intent
 
 
+
+      if (isLiveSearchIntent(effectiveIntent) && effectiveIntent.needsClarification) {
+        logChat('route_clarify', {
+          intentKind: effectiveIntent.kind,
+          queryLength: effectiveIntent.query.length,
+        })
+
+        const clarifyModel = selectChatModel({ hasUploadedDocument, isLiveWebSearch: false })
+        const clarifyResult = await invokeOpenAiResponsesText({
+          apiKey,
+          model: clarifyModel,
+          instructions: buildClarifyInstructions(system),
+          messages,
+          maxOutputTokens: 120,
+        })
+
+        const clarifyReply =
+          clarifyResult.text.trim() || 'Are you looking for in-person jobs, remote jobs, or either?'
+
+        logChat('request_complete', {
+          path: 'clarify',
+          model: clarifyModel,
+          latencyMs: Date.now() - requestStarted,
+          replyLength: clarifyReply.length,
+        })
+
+        return res.json({ reply: clarifyReply })
+      }
 
       if (isLiveSearchIntent(effectiveIntent)) {
 
@@ -398,6 +401,8 @@ chatRouter.post('/', async (req, res) => {
 
         messages,
 
+        maxOutputTokens: hasUploadedDocument ? 700 : 400,
+
       })
 
 
@@ -415,6 +420,8 @@ chatRouter.post('/', async (req, res) => {
           instructions: system,
 
           messages,
+
+          maxOutputTokens: hasUploadedDocument ? 700 : 400,
 
         })
 

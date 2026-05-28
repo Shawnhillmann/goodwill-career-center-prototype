@@ -6,7 +6,9 @@ export type SearchIntent =
   | { kind: 'events'; query: string; needsClarification: boolean }
   | { kind: 'general'; query: string; needsClarification: boolean }
 
-const US_STATE_ABBR = /\b(ct|ma|ny|ri|nh|vt|nj|pa|me|fl|ca|tx|ga|il|oh|mi|wa|or|co|az|nc|va|md|dc)\b/i
+// Note: omit ME/OR/IN as bare \b words — they false-positive on English ("help me", "for", "in").
+const US_STATE_ABBR =
+  /\b(ct|ma|ny|ri|nh|vt|nj|pa|fl|ca|tx|ga|il|oh|mi|wa|co|az|nc|va|md|dc|maine)\b/i
 
 const ROLE_OR_INDUSTRY =
   /\b(retail|cashier|sales|bdr|sdr|warehouse|driver|manager|customer service|associate|entry[\s-]?level|marketing|nurse|rn|lpn|cna|admin|clerical|food service|hospitality|it|software|data|analyst|accountant|teacher|security|custodian|forklift|picker|packer|stocker|barista|server|cook|cleaner|maintenance|receptionist|call center|help desk)\b/i
@@ -34,8 +36,9 @@ const FIND_VERB = /\b(find|search|look\s*up|show\s*me|list|pull up|get me)\b/i
 export function hasLocationHint(s: string): boolean {
   const lower = s.toLowerCase()
   return (
-    /\b(in|near|around|within)\b\s+[a-z]/i.test(s) ||
+    /\b(in|near|around|within)\b\s+[a-z]{2,}/i.test(s) ||
     US_STATE_ABBR.test(s) ||
+    /\b,\s*(me|or|in)\b/i.test(s) ||
     /\b(remote|hybrid|on[\s-]?site|in[\s-]?person)\b/i.test(lower) ||
     /\b(near me|nearby|around me|local)\b/i.test(lower) ||
     /\b([a-z][a-z]+(?:\s+[a-z][a-z]+)?),\s*[a-z]{2}\b/i.test(s)
@@ -43,17 +46,30 @@ export function hasLocationHint(s: string): boolean {
 }
 
 export function hasRoleOrIndustryHint(s: string): boolean {
+  const lower = s.toLowerCase()
+  if (isGenericJobAsk(lower)) return false
   return ROLE_OR_INDUSTRY.test(s) || IMPLICIT_JOB_PHRASE.test(s)
+}
+
+function isGenericJobAsk(lower: string): boolean {
+  return (
+    /\b(help\s+(me\s+)?(find|get)|help\s+with)\b.*\b(a\s+)?(job|work)\b/.test(lower) ||
+    /\b(looking\s+for|need|want)\b.*\b(a\s+)?(job|work)\b/.test(lower) ||
+    /\b(find|get)\s+(a\s+)?(job|work)\b/.test(lower) ||
+    /\bjob\s+search\b/.test(lower)
+  )
 }
 
 function isTrulyAmbiguousJobQuery(s: string): boolean {
   const trimmed = s.trim()
   const lower = trimmed.toLowerCase()
-  const wordCount = trimmed.split(/\s+/).filter(Boolean).length
   if (hasLocationHint(trimmed) || hasRoleOrIndustryHint(trimmed)) return false
   if (HIRING_PHRASE.test(lower)) return false
-  if (wordCount <= 4 && /\b(job|work)\b/.test(lower)) return true
-  return wordCount < 2
+  // e.g. "Help me find a job" — guide first, search after one answer
+  if (isGenericJobAsk(lower)) return true
+  // Any other job mention without place or role type
+  if (JOB_SIGNAL.test(lower) && !hasLocationHint(trimmed) && !hasRoleOrIndustryHint(trimmed)) return true
+  return trimmed.split(/\s+/).filter(Boolean).length < 2
 }
 
 function isTrulyAmbiguousEventQuery(s: string): boolean {
@@ -119,9 +135,35 @@ function assistantOfferedSearch(messages: ChatMessage[]): boolean {
   )
 }
 
+function assistantAskedJobPreference(messages: ChatMessage[]): boolean {
+  const lastAssistant = [...messages].reverse().find((m) => m.role === 'assistant')?.content ?? ''
+  return (
+    /\b(in-person|remote|either)\b/i.test(lastAssistant) &&
+    /\?/.test(lastAssistant) &&
+    /\b(job|work|looking)\b/i.test(lastAssistant)
+  )
+}
+
+function buildCombinedJobQuery(messages: ChatMessage[], latestAnswer: string): string {
+  const userLines = messages.filter((m) => m.role === 'user').map((m) => m.content.trim())
+  const prior = userLines.slice(0, -1).join(' ').trim()
+  return [prior, latestAnswer].filter(Boolean).join(' — ')
+}
+
 export function resolveEffectiveSearchIntent(messages: ChatMessage[], lastUser: string): SearchIntent {
   const direct = detectSearchIntent(lastUser)
-  if (direct.kind !== 'none') return direct
+  if (direct.kind !== 'none') {
+    // User gave specifics after a clarify turn — search now
+    if (direct.needsClarification && assistantAskedJobPreference(messages)) {
+      return { ...direct, needsClarification: false, query: buildCombinedJobQuery(messages, lastUser) }
+    }
+    return direct
+  }
+
+  if (assistantAskedJobPreference(messages) && lastUser.trim().length > 0 && lastUser.trim().length < 120) {
+    const query = buildCombinedJobQuery(messages, lastUser)
+    return { kind: 'jobs', query, needsClarification: false }
+  }
 
   if (!isAffirmativeSearchReply(lastUser) || !assistantOfferedSearch(messages)) {
     return { kind: 'none' }

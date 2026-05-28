@@ -125,6 +125,7 @@ export async function invokeOpenAiResponsesText(params: {
   model: string
   instructions: string
   messages: ChatMessage[]
+  maxOutputTokens?: number
 }): Promise<ResponsesInvokeResult> {
   const startedAt = Date.now()
   const response = await openAiResponsesFetch(
@@ -132,7 +133,7 @@ export async function invokeOpenAiResponsesText(params: {
       model: params.model,
       instructions: params.instructions,
       input: params.messages.map((m) => ({ role: m.role, content: m.content })),
-      max_output_tokens: 900,
+      max_output_tokens: params.maxOutputTokens ?? 400,
     },
     params.apiKey,
   )
@@ -150,6 +151,9 @@ export async function invokeOpenAiResponsesWebSearch(params: {
   instructions: string
   messages: ChatMessage[]
   toolChoice?: WebSearchToolChoice
+  maxOutputTokens?: number
+  /** When false, citations stay inline only (no trailing Sources block). */
+  appendSourcesBlock?: boolean
 }): Promise<ResponsesInvokeResult> {
   const startedAt = Date.now()
   const toolChoice = params.toolChoice ?? 'auto'
@@ -162,7 +166,7 @@ export async function invokeOpenAiResponsesWebSearch(params: {
       reasoning: { effort: 'low' },
       tools: [{ type: 'web_search' }],
       tool_choice: toolChoice,
-      max_output_tokens: 900,
+      max_output_tokens: params.maxOutputTokens ?? 480,
     },
     params.apiKey,
   )
@@ -171,9 +175,9 @@ export async function invokeOpenAiResponsesWebSearch(params: {
   let text = extractOutputText(json)
   const citations = extractUrlCitations(json)
 
-  if (citations.length) {
+  if (params.appendSourcesBlock !== false && citations.length) {
     const sources = citations
-      .slice(0, 8)
+      .slice(0, 3)
       .map((c) => `- ${ c.title ? `[${ c.title }](${ c.url })` : c.url }`)
       .join('\n')
     text = `${ text }\n\nSources:\n${ sources }`.trim()

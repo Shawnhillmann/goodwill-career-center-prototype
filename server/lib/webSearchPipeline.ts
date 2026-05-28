@@ -9,6 +9,7 @@ import {
   type WebSearchToolChoice,
 } from './openaiResponses.js'
 import type { SearchIntent } from './searchIntent.js'
+import { buildLiveSearchInstructions } from './responseStyle.js'
 import { appendWebGroundingToInstructions, formatWebResultsForInstructions } from './webGrounding.js'
 import { webSearch } from './webSearch.js'
 
@@ -16,11 +17,8 @@ export type WebSearchPipelineResult =
   | { ok: true; reply: string; stage: string; model: string }
   | { ok: false; userMessage: string; detail: string }
 
-const LIVE_SEARCH_INSTRUCTIONS_SUFFIX =
-  '\n\nUse live web search results to answer. Never fabricate listings, events, dates, locations, or companies.' +
-  '\nReturn 3–5 concrete items when possible (job listings or events), each with: title, company/organization, location, and a direct link.' +
-  '\nIf results are broad, share the best matches first, then offer ONE optional refinement question at the end.' +
-  '\nIf you cannot find concrete listings, say so honestly and suggest a sharper search query.'
+const LIVE_SEARCH_GROUNDING_RULES =
+  'Use only real results from web search. Never fabricate employers, dates, or URLs. If nothing solid appears, say so in one sentence and ask one clarifying question.'
 
 function groundingFailureReason(quality: GroundingQuality): string {
   switch (quality) {
@@ -60,6 +58,7 @@ async function tryOpenAiWebSearch(opts: {
       instructions: opts.instructions,
       messages: opts.messages,
       toolChoice: opts.toolChoice,
+      appendSourcesBlock: false,
     })
     const { usable, quality } = isUsableLiveSearch(result)
     logChat('web_search_attempt', {
@@ -92,7 +91,7 @@ export async function runLiveWebSearchPipeline(opts: {
   messages: ChatMessage[]
   intent: Exclude<SearchIntent, { kind: 'none' }>
 }): Promise<WebSearchPipelineResult> {
-  const instructions = opts.baseInstructions + LIVE_SEARCH_INSTRUCTIONS_SUFFIX
+  const instructions = buildLiveSearchInstructions(`${ opts.baseInstructions }\n\n${ LIVE_SEARCH_GROUNDING_RULES }`)
   const miniModel = selectChatModel({ hasUploadedDocument: false, isLiveWebSearch: true })
   const fallbackModel = selectChatModel({
     hasUploadedDocument: false,
@@ -181,6 +180,7 @@ export async function runLiveWebSearchPipeline(opts: {
         model: miniModel,
         instructions: groundedInstructions,
         messages: opts.messages,
+        maxOutputTokens: 480,
       })
 
       const quality = assessLiveSearchOutput(summarized.text, summarized.citationCount)
