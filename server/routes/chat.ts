@@ -250,30 +250,60 @@ chatRouter.post('/', async (req, res) => {
         // eslint-disable-next-line no-console
         console.log('[chat] OpenAI web_search:', effectiveIntent.kind, effectiveIntent.query)
 
-        // NOTE: gpt-5-mini is great for normal chat, but web search is more reliable with gpt-5.5.
-        const searchModel = /^gpt-5-mini$/i.test(model) ? 'gpt-5.5' : model || 'gpt-5.5'
-
-        // eslint-disable-next-line no-console
-        console.log('[chat] OpenAI request (web_search)', {
-          model: searchModel,
-          tool: 'web_search',
-        })
         const instructions =
           system +
           '\n\nUse live web search results to answer. Never fabricate listings, events, dates, locations, or companies.' +
           '\nReturn 3–5 concrete items when possible (job listings or events), each with: title, company/organization, location, and a direct link.' +
           '\nIf you cannot find concrete listings, say so and provide the best next search query to try.'
 
-        const reply = await invokeOpenAiResponsesWebSearch({
-          apiKey,
-          model: searchModel,
-          instructions,
-          messages,
-          toolChoice: 'required',
-        })
+        // Cost-aware reliability: try gpt-5-mini first, then fall back to gpt-5.5 once if empty/error.
+        const primaryModel = model || 'gpt-5-mini'
+        const fallbackModel = 'gpt-5.5'
+
+        const attempt = async (m: string) => {
+          // eslint-disable-next-line no-console
+          console.log('[chat] OpenAI request (web_search)', { model: m, tool: 'web_search' })
+          return await invokeOpenAiResponsesWebSearch({
+            apiKey,
+            model: m,
+            instructions,
+            messages,
+            toolChoice: 'required',
+          })
+        }
+
+        let reply = ''
+        try {
+          reply = await attempt(primaryModel)
+        } catch (err) {
+          // eslint-disable-next-line no-console
+          console.error(
+            '[chat] OpenAI web_search primary failed:',
+            primaryModel,
+            err instanceof Error ? err.message : String(err),
+          )
+        }
 
         if (!reply || !reply.trim()) {
-          return sendError(res, 502, 'The AI did not return a response. Please try again.')
+          try {
+            reply = await attempt(fallbackModel)
+          } catch (err) {
+            // eslint-disable-next-line no-console
+            console.error(
+              '[chat] OpenAI web_search fallback failed:',
+              fallbackModel,
+              err instanceof Error ? err.message : String(err),
+            )
+          }
+        }
+
+        if (!reply || !reply.trim()) {
+          return sendError(
+            res,
+            502,
+            'Unable to retrieve live web results right now.',
+            'Web search returned no usable output. Please try again in a moment or refine the query with role + city/state.',
+          )
         }
 
         return res.json({ reply })
