@@ -27,6 +27,42 @@ function extractOutputText(json: ResponsesCreateResult): string {
   return texts.join('\n').trim()
 }
 
+export async function invokeOpenAiResponsesText(params: {
+  apiKey: string
+  model: string
+  instructions: string
+  messages: ChatMessage[]
+}): Promise<string> {
+  const response = await fetch('https://api.openai.com/v1/responses', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${ params.apiKey }`,
+    },
+    body: JSON.stringify({
+      model: params.model,
+      instructions: params.instructions,
+      input: params.messages.map((m) => ({ role: m.role, content: m.content })),
+      max_output_tokens: 900,
+    }),
+  })
+
+  const raw = await response.text()
+  if (!response.ok) {
+    let detail = raw
+    try {
+      const json = JSON.parse(raw) as { error?: { message?: string } }
+      detail = json?.error?.message ?? raw
+    } catch {
+      // use raw
+    }
+    throw new Error(`OpenAI Responses API error (${ response.status }): ${ detail }`)
+  }
+
+  const json = JSON.parse(raw) as ResponsesCreateResult
+  return extractOutputText(json)
+}
+
 function extractUrlCitations(json: ResponsesCreateResult): UrlCitation[] {
   const output = Array.isArray(json.output) ? json.output : []
   const urls: UrlCitation[] = []

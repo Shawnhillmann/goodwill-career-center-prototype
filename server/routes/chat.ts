@@ -4,8 +4,7 @@ import { getAiProvider, getOpenAiConfig } from '../lib/aiProvider.js'
 import { bedrockErrorHint, invokeBedrockChat } from '../lib/bedrockChat.js'
 import { getEnv, requireEnv } from '../lib/env.js'
 import { sendError } from '../lib/errors.js'
-import { invokeOpenAiChat } from '../lib/openaiChat.js'
-import { invokeOpenAiResponsesWebSearch } from '../lib/openaiResponses.js'
+import { invokeOpenAiResponsesText, invokeOpenAiResponsesWebSearch } from '../lib/openaiResponses.js'
 import { webSearch } from '../lib/webSearch.js'
 
 type ChatRequestBody = {
@@ -237,10 +236,10 @@ chatRouter.post('/', async (req, res) => {
           '\n\nThe user asked for live/local/time-sensitive information, but the request is underspecified.' +
           '\nAsk ONLY 1–2 short clarifying questions (no search yet).'
 
-        const reply = await invokeOpenAiChat({
+        const reply = await invokeOpenAiResponsesText({
           apiKey,
           model,
-          system: clarifyInstructions,
+          instructions: clarifyInstructions,
           messages,
         })
 
@@ -273,7 +272,8 @@ chatRouter.post('/', async (req, res) => {
         return res.json({ reply })
       }
 
-      const reply = await invokeOpenAiChat({ apiKey, model, system, messages: messagesWithWebContext })
+      // Default fast path: use Responses API for gpt-5 models (avoids chat-completions incompatibilities).
+      const reply = await invokeOpenAiResponsesText({ apiKey, model, instructions: system, messages: messagesWithWebContext })
 
       if (!reply || !reply.trim()) {
         return sendError(res, 502, 'The AI did not return a response. Please try again.')
