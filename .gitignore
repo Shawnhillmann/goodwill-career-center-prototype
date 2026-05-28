@@ -15,6 +15,7 @@ api/_handler.cjs
 .env
 .env.*
 !.env.example
+api/package-lock.json
 
 # Editor directories and files
 .vscode/*
