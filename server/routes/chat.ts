@@ -5,6 +5,7 @@ import { bedrockErrorHint, invokeBedrockChat } from '../lib/bedrockChat.js'
 import { getEnv, requireEnv } from '../lib/env.js'
 import { sendError } from '../lib/errors.js'
 import { invokeOpenAiChat } from '../lib/openaiChat.js'
+import { invokeOpenAiResponsesWebSearch } from '../lib/openaiResponses.js'
 import { webSearch } from '../lib/webSearch.js'
 
 type ChatRequestBody = {
@@ -194,7 +195,7 @@ chatRouter.post('/', async (req, res) => {
 
   // Optionally retrieve web results first (only when intent is specific enough).
   let webContext: string | null = null
-  if ((intent.kind === 'jobs' || intent.kind === 'events' || intent.kind === 'general') && !intent.needsClarification) {
+  if (aiProvider !== 'openai' && (intent.kind === 'jobs' || intent.kind === 'events' || intent.kind === 'general') && !intent.needsClarification) {
     try {
       const results = await webSearch(intent.query, 6)
       webContext = results.length ? webResultsToContext(results) : null
@@ -230,6 +231,42 @@ chatRouter.post('/', async (req, res) => {
     }
 
     try {
+      const isLiveInfoIntent =
+        (intent.kind === 'jobs' || intent.kind === 'events' || intent.kind === 'general') &&
+        !intent.needsClarification
+
+      if ((intent.kind === 'jobs' || intent.kind === 'events' || intent.kind === 'general') && intent.needsClarification) {
+        // Ask 1–2 clarifying questions before searching.
+        const questions = 'questions' in intent ? intent.questions : []
+        const prompt = questions.length ? questions.join('\n') : 'Can you share your location and timeframe?'
+        return res.json({ reply: prompt })
+      }
+
+      if (isLiveInfoIntent) {
+        // eslint-disable-next-line no-console
+        console.log('[chat] OpenAI web_search:', intent.kind, intent.query)
+
+        const searchModel = model || 'gpt-5.5'
+        const instructions =
+          system +
+          '\n\nUse live web search results to answer. Never fabricate listings, events, dates, locations, or companies.' +
+          '\nInclude source links when possible. Prefer a short structured list (title/company/location/date + link) when relevant.'
+
+        const reply = await invokeOpenAiResponsesWebSearch({
+          apiKey,
+          model: searchModel,
+          instructions,
+          messages,
+          toolChoice: 'required',
+        })
+
+        if (!reply || !reply.trim()) {
+          return sendError(res, 502, 'The AI did not return a response. Please try again.')
+        }
+
+        return res.json({ reply })
+      }
+
       const reply = await invokeOpenAiChat({ apiKey, model, system, messages: messagesWithWebContext })
 
       if (!reply || !reply.trim()) {
