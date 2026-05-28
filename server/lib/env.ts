@@ -6,6 +6,8 @@ type Env = {
   BEDROCK_MODEL_ID?: string
   OPENAI_API_KEY?: string
   OPENAI_MODEL?: string
+  OPENAI_MODEL_NANO?: string
+  OPENAI_MODEL_SEARCH_FALLBACK?: string
 }
 
 function clean(v: string | undefined) {
@@ -22,6 +24,8 @@ export function getEnv(): Env {
     BEDROCK_MODEL_ID: clean(process.env.BEDROCK_MODEL_ID),
     OPENAI_API_KEY: clean(process.env.OPENAI_API_KEY),
     OPENAI_MODEL: clean(process.env.OPENAI_MODEL),
+    OPENAI_MODEL_NANO: clean(process.env.OPENAI_MODEL_NANO),
+    OPENAI_MODEL_SEARCH_FALLBACK: clean(process.env.OPENAI_MODEL_SEARCH_FALLBACK),
   }
 }
 
