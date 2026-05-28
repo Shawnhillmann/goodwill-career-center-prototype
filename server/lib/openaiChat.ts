@@ -6,6 +6,8 @@ export async function invokeOpenAiChat(params: {
   system: string
   messages: ChatMessage[]
 }): Promise<string> {
+  const usesFixedSampling = /^gpt-5/i.test(params.model)
+
   const response = await fetch('https://api.openai.com/v1/chat/completions', {
     method: 'POST',
     headers: {
@@ -14,7 +16,8 @@ export async function invokeOpenAiChat(params: {
     },
     body: JSON.stringify({
       model: params.model,
-      temperature: 0.4,
+      // Some newer models (e.g. gpt-5-mini) only support the default temperature.
+      ...(usesFixedSampling ? {} : { temperature: 0.4 }),
       // Newer OpenAI models (e.g. gpt-5-mini) use max_completion_tokens instead of max_tokens.
       max_completion_tokens: 800,
       messages: [
