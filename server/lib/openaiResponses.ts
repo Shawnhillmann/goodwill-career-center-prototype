@@ -103,6 +103,7 @@ export async function invokeOpenAiResponsesWebSearch(params: {
       model: params.model,
       instructions: params.instructions,
       input: params.messages.map((m) => ({ role: m.role, content: m.content })),
+      reasoning: { effort: 'low' },
       tools: [{ type: 'web_search' }],
       tool_choice: params.toolChoice ?? 'auto',
       // Keep it fast; these are short, practical answers.

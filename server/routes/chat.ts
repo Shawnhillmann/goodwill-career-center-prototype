@@ -250,7 +250,14 @@ chatRouter.post('/', async (req, res) => {
         // eslint-disable-next-line no-console
         console.log('[chat] OpenAI web_search:', effectiveIntent.kind, effectiveIntent.query)
 
-        const searchModel = model || 'gpt-5.5'
+        // NOTE: gpt-5-mini is great for normal chat, but web search is more reliable with gpt-5.5.
+        const searchModel = /^gpt-5-mini$/i.test(model) ? 'gpt-5.5' : model || 'gpt-5.5'
+
+        // eslint-disable-next-line no-console
+        console.log('[chat] OpenAI request (web_search)', {
+          model: searchModel,
+          tool: 'web_search',
+        })
         const instructions =
           system +
           '\n\nUse live web search results to answer. Never fabricate listings, events, dates, locations, or companies.' +
