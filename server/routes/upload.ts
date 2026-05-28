@@ -26,7 +26,18 @@ async function extractText(file: Express.Multer.File): Promise<string> {
     return result.value ?? ''
   }
   if (ext === 'pdf') {
-    return extractPdfText(file.buffer)
+    try {
+      return await extractPdfText(file.buffer)
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err)
+      if (/password|encrypted/i.test(msg)) {
+        throw new Error('This PDF is password-protected and can’t be read.')
+      }
+      if (/image-only|scanned/i.test(msg)) {
+        throw new Error('This PDF appears to be image-only. Please upload a text-based PDF, DOCX, or TXT file.')
+      }
+      throw err instanceof Error ? err : new Error(msg)
+    }
   }
   throw new Error('Unsupported file type. Please upload a .docx, .pdf, or .txt file.')
 }
