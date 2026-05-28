@@ -1,10 +1,10 @@
 import cors from 'cors'
 import express from 'express'
-import { getAiProvider, getOpenAiConfig } from './lib/aiProvider'
-import { getEnv } from './lib/env'
-import { chatRouter } from './routes/chat'
-import { documentRouter } from './routes/document'
-import { uploadRouter } from './routes/upload'
+import { getAiProvider, getOpenAiConfig } from './lib/aiProvider.js'
+import { getEnv } from './lib/env.js'
+import { chatRouter } from './routes/chat.js'
+import { documentRouter } from './routes/document.js'
+import { uploadRouter } from './routes/upload.js'
 
 export function createApp() {
   const app = express()

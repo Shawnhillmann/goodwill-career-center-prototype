@@ -1,8 +1,8 @@
 import express from 'express'
 import mammoth from 'mammoth'
 import multer from 'multer'
-import { sendError } from '../lib/errors'
-import { extractPdfText } from '../lib/pdfText'
+import { sendError } from '../lib/errors.js'
+import { extractPdfText } from '../lib/pdfText.js'
 
 const MAX_FILE_BYTES = 5 * 1024 * 1024
 

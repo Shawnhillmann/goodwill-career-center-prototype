@@ -1,8 +1,8 @@
 import express from 'express'
-import { Document, Packer, Paragraph, TextRun } from 'docx'
+import { Document, Packer, Paragraph } from 'docx'
 import PDFDocument from 'pdfkit'
-import { markdownToDocxParagraphs, markdownToPlainText, sanitizeDocumentMarkdown } from '../lib/markdown'
-import { sendError } from '../lib/errors'
+import { markdownToDocxParagraphs, markdownToPlainText, sanitizeDocumentMarkdown } from '../lib/markdown.js'
+import { sendError } from '../lib/errors.js'
 
 type ResumeDocBody = {
   resumeText: string

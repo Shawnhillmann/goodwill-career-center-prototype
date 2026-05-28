@@ -1,9 +1,9 @@
 import dotenv from 'dotenv'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { getAiProvider, getOpenAiConfig } from './lib/aiProvider'
-import { getEnv } from './lib/env'
-import { createApp } from './app'
+import { getAiProvider, getOpenAiConfig } from './lib/aiProvider.js'
+import { getEnv } from './lib/env.js'
+import { createApp } from './app.js'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const envPath = path.resolve(__dirname, '../.env')

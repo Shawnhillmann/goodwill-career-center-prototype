@@ -1,4 +1,4 @@
-import type { ChatMessage } from './advisorPrompt'
+import type { ChatMessage } from './advisorPrompt.js'
 
 export async function invokeOpenAiChat(params: {
   apiKey: string

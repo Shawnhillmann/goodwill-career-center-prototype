@@ -117,7 +117,12 @@ export function CareerAdvisorCard({ language, readAloudEnabled }: CareerAdvisorC
         })
 
         const rawText = await resp.text().catch(() => '')
-        const json = rawText ? (JSON.parse(rawText) as any) : null
+        let json: any = null
+        try {
+          json = rawText ? (JSON.parse(rawText) as any) : null
+        } catch {
+          json = null
+        }
         if (!resp.ok) {
           const base =
             json?.error?.message ??

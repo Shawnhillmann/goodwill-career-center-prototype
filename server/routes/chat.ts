@@ -1,11 +1,11 @@
 import express from 'express'
-import { buildSystemPrompt, type ChatMessage } from '../lib/advisorPrompt'
-import { getAiProvider, getOpenAiConfig } from '../lib/aiProvider'
-import { bedrockErrorHint, invokeBedrockChat } from '../lib/bedrockChat'
-import { getEnv, requireEnv } from '../lib/env'
-import { sendError } from '../lib/errors'
-import { invokeOpenAiChat } from '../lib/openaiChat'
-import { webSearch } from '../lib/webSearch'
+import { buildSystemPrompt, type ChatMessage } from '../lib/advisorPrompt.js'
+import { getAiProvider, getOpenAiConfig } from '../lib/aiProvider.js'
+import { bedrockErrorHint, invokeBedrockChat } from '../lib/bedrockChat.js'
+import { getEnv, requireEnv } from '../lib/env.js'
+import { sendError } from '../lib/errors.js'
+import { invokeOpenAiChat } from '../lib/openaiChat.js'
+import { webSearch } from '../lib/webSearch.js'
 
 type ChatRequestBody = {
   messages: ChatMessage[]
@@ -109,24 +109,6 @@ function requiresFreshData(userText: string): boolean {
     /\b(this week|this month|next week|next month|upcoming|today|tomorrow)\b/.test(s) ||
     /\b(local resources|near me)\b/.test(s)
   )
-}
-
-function formatWebResultsReply(q: string, results: Array<{ title: string; url: string; snippet?: string }>) {
-  if (!results.length) {
-    return `I tried a quick web search for “${ q }”, but I couldn’t find results right now.\n\nTry rephrasing (e.g., include the city/state) or try again in a moment.`
-  }
-
-  const lines = [
-    `**Here are a few results I found on the web for:** ${ q }`,
-    '',
-    ...results.map((r, i) => {
-      const snippet = r.snippet ? `\n  - ${ r.snippet }` : ''
-      return `${ i + 1 }. [${ r.title }](${ r.url })${ snippet }`
-    }),
-    '',
-    'Want me to narrow this down (full-time vs part-time, pay range, distance, or specific store/company)?',
-  ]
-  return lines.join('\n')
 }
 
 function webResultsToContext(results: Array<{ title: string; url: string; snippet?: string }>) {

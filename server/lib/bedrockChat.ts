@@ -1,6 +1,6 @@
 import { BedrockRuntimeClient, InvokeModelCommand } from '@aws-sdk/client-bedrock-runtime'
-import type { ChatMessage } from './advisorPrompt'
-import { getEnv, requireEnv } from './env'
+import type { ChatMessage } from './advisorPrompt.js'
+import { getEnv, requireEnv } from './env.js'
 
 type BedrockProvider = 'anthropic' | 'nova'
 
