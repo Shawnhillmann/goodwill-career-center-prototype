@@ -116,13 +116,18 @@ export function CareerAdvisorCard({ language, readAloudEnabled }: CareerAdvisorC
           }),
         })
 
-        const json = await resp.json().catch(() => null)
+        const rawText = await resp.text().catch(() => '')
+        const json = rawText ? (JSON.parse(rawText) as any) : null
         if (!resp.ok) {
           const base =
             json?.error?.message ??
             'Sorry — I’m having trouble responding right now. Please try again in a moment.'
           const details = typeof json?.error?.details === 'string' ? json.error.details : ''
-          const msg = details ? `${ base } ${ details }` : base
+          const status = `HTTP ${ resp.status }`
+          const hint =
+            details ||
+            (rawText && rawText.length < 600 && !rawText.trim().startsWith('<') ? rawText.trim() : '')
+          const msg = hint ? `${ base } (${ status }) ${ hint }` : `${ base } (${ status })`
           throw new Error(msg)
         }
 
