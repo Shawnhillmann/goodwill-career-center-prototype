@@ -95,7 +95,12 @@ The frontend and API deploy together. `npm run build` bundles the Express API in
 AI_PROVIDER=openai
 OPENAI_API_KEY=your_openai_api_key
 OPENAI_MODEL=gpt-5-mini
+# Optional (defaults shown):
+# OPENAI_MODEL_NANO=gpt-5-nano
+# OPENAI_MODEL_SEARCH_FALLBACK=gpt-5.5
 ```
+
+**Required on Vercel:** `AI_PROVIDER`, `OPENAI_API_KEY`, and `OPENAI_MODEL`. The nano and search-fallback model vars are optional; the server uses built-in defaults if omitted.
 
 Redeploy after changing env vars. Verify: `https://<your-app>.vercel.app/api/health` should return JSON with `"aiProvider": "openai"` and `"openaiConfigured": true`.
 
