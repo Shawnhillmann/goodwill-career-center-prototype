@@ -33,6 +33,21 @@ const EXPLICIT_WEB =
 
 const FIND_VERB = /\b(find|search|look\s*up|show\s*me|list|pull up|get me)\b/i
 
+const DOCUMENT_ACTION =
+  /\b(rewrite|revise|tailor|update|improve|edit|proofread|fix|draft|write|create|generate|format)\b/i
+
+/** Resume/cover-letter work or comparing prior listings — not a new job search. */
+export function isDocumentOrCoachingTask(q: string): boolean {
+  const s = q.trim().toLowerCase()
+  if (!s) return false
+  if (/\b(resume|résumé|cv|curriculum vitae|cover letter)\b/.test(s) && DOCUMENT_ACTION.test(s)) return true
+  if (/\b(tailor(?:ed)?|rewrite|revise)\b/.test(s) && /\b(resume|cv|cover letter)\b/.test(s)) return true
+  if (/\b(which one|best fit|better fit|good fit|fit best)\b/.test(s)) return true
+  if (/\b(yes|yeah|sure|please)\b/.test(s) && /\b(resume|tailor|rewrite|revise)\b/.test(s)) return true
+  if (/\b(interview prep|practice interview|thank.?you note)\b/.test(s)) return true
+  return false
+}
+
 export function hasLocationHint(s: string): boolean {
   const lower = s.toLowerCase()
   return (
@@ -91,6 +106,7 @@ export function detectSearchIntent(q: string): SearchIntent {
   const s = q.trim()
   const lower = s.toLowerCase()
   if (!s) return { kind: 'none' }
+  if (isDocumentOrCoachingTask(s)) return { kind: 'none' }
   if (lower.includes('http://') || lower.includes('https://')) return { kind: 'none' }
 
   const explicitSearch = EXPLICIT_WEB.test(lower)
@@ -118,6 +134,7 @@ export function detectSearchIntent(q: string): SearchIntent {
 }
 
 export function isAffirmativeSearchReply(q: string): boolean {
+  if (isDocumentOrCoachingTask(q)) return false
   const lower = q.trim().toLowerCase()
   if (!lower) return false
   return (
@@ -151,6 +168,8 @@ function buildCombinedJobQuery(messages: ChatMessage[], latestAnswer: string): s
 }
 
 export function resolveEffectiveSearchIntent(messages: ChatMessage[], lastUser: string): SearchIntent {
+  if (isDocumentOrCoachingTask(lastUser)) return { kind: 'none' }
+
   const direct = detectSearchIntent(lastUser)
   if (direct.kind !== 'none') {
     // User gave specifics after a clarify turn — search now

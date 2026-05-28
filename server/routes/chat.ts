@@ -88,19 +88,10 @@ function missingEnvForProvider(provider: 'openai' | 'bedrock') {
 
 
 function isExplicitDocumentRequest(q: string): boolean {
-
   const s = q.toLowerCase()
-
-  return (
-
-    /\b(resume|résumé|cv|curriculum vitae)\b/.test(s) ||
-
-    /\bcover letter\b/.test(s) ||
-
-    (/\b(write|draft|generate|create|format)\b/.test(s) && /\b(resume|résumé|cv|cover letter|letter)\b/.test(s))
-
-  )
-
+  const doc = /\b(resume|résumé|cv|curriculum vitae|cover letter)\b/
+  const action = /\b(write|draft|generate|create|format|rewrite|revise|tailor|update|improve|edit|fix)\b/
+  return doc.test(s) && (action.test(s) || /\btailored\b/.test(s))
 }
 
 
@@ -275,7 +266,11 @@ chatRouter.post('/', async (req, res) => {
 
 
 
-      if (isLiveSearchIntent(effectiveIntent) && effectiveIntent.needsClarification) {
+      if (
+        isLiveSearchIntent(effectiveIntent) &&
+        effectiveIntent.needsClarification &&
+        !isExplicitDocumentRequest(lastUser)
+      ) {
         logChat('route_clarify', {
           intentKind: effectiveIntent.kind,
           queryLength: effectiveIntent.query.length,
@@ -290,8 +285,10 @@ chatRouter.post('/', async (req, res) => {
           maxOutputTokens: 120,
         })
 
-        const clarifyReply =
-          clarifyResult.text.trim() || 'Are you looking for in-person jobs, remote jobs, or either?'
+        const clarifyReply = clarifyResult.text.trim()
+        if (!clarifyReply) {
+          return sendError(res, 502, 'The AI did not return a response. Please try again.')
+        }
 
         logChat('request_complete', {
           path: 'clarify',
