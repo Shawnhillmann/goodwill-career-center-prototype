@@ -14,7 +14,12 @@ type UiStrings = {
   resources: string
   liveSupport: string
   liveSupportTitle: string
-  liveSupportIntro: string
+  liveSupportVirtualSession: string
+  liveSupportCentersHeading: string
+  liveSupportZipLabel: string
+  liveSupportZipPlaceholder: string
+  liveSupportZipHint: string
+  liveSupportNearest: string
   backToChat: string
   resourcesTitle: string
   resourcesIntro: string
@@ -50,7 +55,12 @@ const uiStrings: Record<SupportedLanguage, UiStrings> = {
     resources: 'Resources',
     liveSupport: 'Live Support',
     liveSupportTitle: 'Live support',
-    liveSupportIntro: 'Find your closest Career Center and the best number to call.',
+    liveSupportVirtualSession: 'Schedule a virtual session with one of our career coaches (coming soon)',
+    liveSupportCentersHeading: 'Visit or call one of our career centers',
+    liveSupportZipLabel: 'Your ZIP code',
+    liveSupportZipPlaceholder: 'Enter ZIP code',
+    liveSupportZipHint: 'Enter your ZIP code to see the closest centers first.',
+    liveSupportNearest: 'Nearest to you',
     backToChat: 'Back to chat',
     resourcesTitle: 'Career resources',
     resourcesIntro: 'Short videos, slideshows, and guides you can use with a coach or on your own.',
@@ -85,7 +95,12 @@ const uiStrings: Record<SupportedLanguage, UiStrings> = {
     resources: 'Recursos',
     liveSupport: 'Apoyo en vivo',
     liveSupportTitle: 'Apoyo en vivo',
-    liveSupportIntro: 'Encuentra tu Centro de Carreras más cercano y el mejor número para llamar.',
+    liveSupportVirtualSession: 'Programa una sesión virtual con uno de nuestros coaches de carrera (próximamente)',
+    liveSupportCentersHeading: 'Visita o llama a uno de nuestros centros de carrera',
+    liveSupportZipLabel: 'Tu código postal',
+    liveSupportZipPlaceholder: 'Ingresa tu código postal',
+    liveSupportZipHint: 'Ingresa tu código postal para ver primero los centros más cercanos.',
+    liveSupportNearest: 'Más cercano a ti',
     backToChat: 'Volver al chat',
     resourcesTitle: 'Recursos de carrera',
     resourcesIntro: 'Videos cortos, presentaciones y guías para usar con un coach o por tu cuenta.',
@@ -120,7 +135,12 @@ const uiStrings: Record<SupportedLanguage, UiStrings> = {
     resources: 'Resous',
     liveSupport: 'Sipò an dirèk',
     liveSupportTitle: 'Sipò an dirèk',
-    liveSupportIntro: 'Jwenn Sant Karyè ki pi pre a ak nimewo pou rele a.',
+    liveSupportVirtualSession: 'Pran yon sesyon vityèl ak youn nan coach karyè nou yo (byento)',
+    liveSupportCentersHeading: 'Vizite oswa rele youn nan sant karyè nou yo',
+    liveSupportZipLabel: 'Kòd postal ou',
+    liveSupportZipPlaceholder: 'Antre kòd postal la',
+    liveSupportZipHint: 'Antre kòd postal ou pou w wè sant ki pi pre yo an premye.',
+    liveSupportNearest: 'Ki pi pre ou',
     backToChat: 'Tounen nan chat la',
     resourcesTitle: 'Resous pou karyè',
     resourcesIntro: 'Videyo kout, dyapo, ak gid ou ka itilize ak yon antrenè oswa poukont ou.',
@@ -155,7 +175,12 @@ const uiStrings: Record<SupportedLanguage, UiStrings> = {
     resources: 'Materiały',
     liveSupport: 'Wsparcie na żywo',
     liveSupportTitle: 'Wsparcie na żywo',
-    liveSupportIntro: 'Znajdź najbliższe Centrum Kariery i najlepszy numer telefonu.',
+    liveSupportVirtualSession: 'Umów wirtualną sesję z jednym z naszych doradców kariery (wkrótce)',
+    liveSupportCentersHeading: 'Odwiedź lub zadzwoń do jednego z naszych centrów kariery',
+    liveSupportZipLabel: 'Twój kod pocztowy',
+    liveSupportZipPlaceholder: 'Wpisz kod pocztowy',
+    liveSupportZipHint: 'Wpisz kod pocztowy, aby najpierw zobaczyć najbliższe centra.',
+    liveSupportNearest: 'Najbliżej Ciebie',
     backToChat: 'Wróć do czatu',
     resourcesTitle: 'Materiały o karierze',
     resourcesIntro: 'Krótkie filmy, prezentacje i poradniki do użycia z doradcą lub samodzielnie.',
@@ -190,7 +215,12 @@ const uiStrings: Record<SupportedLanguage, UiStrings> = {
     resources: 'Материалы',
     liveSupport: 'Живая поддержка',
     liveSupportTitle: 'Живая поддержка',
-    liveSupportIntro: 'Найдите ближайший карьерный центр и лучший номер для звонка.',
+    liveSupportVirtualSession: 'Запланируйте виртуальную сессию с одним из наших карьерных коучей (скоро)',
+    liveSupportCentersHeading: 'Посетите или позвоните в один из наших карьерных центров',
+    liveSupportZipLabel: 'Ваш почтовый индекс',
+    liveSupportZipPlaceholder: 'Введите индекс',
+    liveSupportZipHint: 'Введите индекс, чтобы сначала увидеть ближайшие центры.',
+    liveSupportNearest: 'Ближайший к вам',
     backToChat: 'Назад в чат',
     resourcesTitle: 'Ресурсы по карьере',
     resourcesIntro: 'Короткие видео, презентации и руководства для работы с консультантом или самостоятельно.',
@@ -225,7 +255,12 @@ const uiStrings: Record<SupportedLanguage, UiStrings> = {
     resources: 'الموارد',
     liveSupport: 'دعم مباشر',
     liveSupportTitle: 'دعم مباشر',
-    liveSupportIntro: 'اعثر على أقرب مركز مهني وأفضل رقم للاتصال.',
+    liveSupportVirtualSession: 'حدّد جلسة افتراضية مع أحد مدربي المهنة لدينا (قريبًا)',
+    liveSupportCentersHeading: 'زر أو اتصل بأحد مراكز المهنة لدينا',
+    liveSupportZipLabel: 'الرمز البريدي',
+    liveSupportZipPlaceholder: 'أدخل الرمز البريدي',
+    liveSupportZipHint: 'أدخل الرمز البريدي لعرض أقرب المراكز أولًا.',
+    liveSupportNearest: 'الأقرب إليك',
     backToChat: 'العودة إلى الدردشة',
     resourcesTitle: 'موارد مهنية',
     resourcesIntro: 'فيديوهات قصيرة وعروض شرائح وأدلة يمكنك استخدامها مع مدرب أو بمفردك.',
