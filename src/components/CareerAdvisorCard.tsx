@@ -13,6 +13,11 @@ import {
 
 type ChatRole = 'user' | 'advisor'
 
+type PendingWebSearchConfirmation = {
+  topic: 'jobs' | 'local_resources' | 'events' | 'general'
+  querySoFar: string
+}
+
 type ChatMessage = {
   id: string
   role: ChatRole
@@ -21,6 +26,7 @@ type ChatMessage = {
   value?: string
   kind?: 'document'
   attachmentName?: string
+  pendingWebSearchConfirmation?: PendingWebSearchConfirmation
 }
 
 type CareerAdvisorCardProps = {
@@ -96,7 +102,12 @@ export function CareerAdvisorCard({ language, readAloudEnabled }: CareerAdvisorC
   const queueAdvisorReply = useCallback(
     async (
       userTextValue: string,
-      opts?: { expectDocument?: boolean; uploadedDocumentText?: string | null },
+      opts?: {
+        expectDocument?: boolean
+        uploadedDocumentText?: string | null
+        confirmWebSearch?: boolean
+        pendingWebSearchConfirmation?: PendingWebSearchConfirmation
+      },
     ) => {
       const docText = opts?.uploadedDocumentText ?? null
       try {
@@ -113,6 +124,10 @@ export function CareerAdvisorCard({ language, readAloudEnabled }: CareerAdvisorC
             ],
             language,
             ...(docText ? { uploadedDocumentText: docText } : {}),
+            ...(opts?.confirmWebSearch ? { confirmWebSearch: true } : {}),
+            ...(opts?.pendingWebSearchConfirmation
+              ? { pendingWebSearchConfirmation: opts.pendingWebSearchConfirmation }
+              : {}),
           }),
         })
 
@@ -144,10 +159,22 @@ export function CareerAdvisorCard({ language, readAloudEnabled }: CareerAdvisorC
         const replyText = String(json?.reply ?? '').trim()
         if (!replyText) throw new Error('Sorry — I didn’t get a response. Please try again.')
 
+        const pending = json?.pendingWebSearchConfirmation as PendingWebSearchConfirmation | undefined
+
         setAwaitingAdvisor(false)
         setMessages((prev) => [
-          ...prev,
-          { id: nextId(), role: 'advisor', text: replyText, ...(opts?.expectDocument ? { kind: 'document' as const } : {}) },
+          ...prev.map((m) =>
+            m.role === 'advisor' && m.pendingWebSearchConfirmation
+              ? { ...m, pendingWebSearchConfirmation: undefined }
+              : m,
+          ),
+          {
+            id: nextId(),
+            role: 'advisor',
+            text: replyText,
+            ...(opts?.expectDocument ? { kind: 'document' as const } : {}),
+            ...(pending ? { pendingWebSearchConfirmation: pending } : {}),
+          },
         ])
         speak(replyText)
       } catch (e: any) {
@@ -165,6 +192,23 @@ export function CareerAdvisorCard({ language, readAloudEnabled }: CareerAdvisorC
     [language, messages, speak],
   )
 
+  const confirmWebSearch = useCallback(
+    (pending: PendingWebSearchConfirmation) => {
+      const value = 'Search online'
+      setMessages((prev) => [
+        ...prev.map((m) =>
+          m.role === 'advisor' && m.pendingWebSearchConfirmation
+            ? { ...m, pendingWebSearchConfirmation: undefined }
+            : m,
+        ),
+        { id: nextId(), role: 'user', text: ui.searchOnline, value },
+      ])
+      setAwaitingAdvisor(true)
+      queueAdvisorReply(value, { confirmWebSearch: true, pendingWebSearchConfirmation: pending })
+    },
+    [queueAdvisorReply, ui.searchOnline],
+  )
+
   const sendUserMessage = useCallback(
     (input: string | { displayText: string; value: string; attachmentName?: string; documentText?: string | null }) => {
       const displayText = typeof input === 'string' ? input : input.displayText
@@ -175,6 +219,9 @@ export function CareerAdvisorCard({ language, readAloudEnabled }: CareerAdvisorC
       const trimmedValue = value.trim()
       if (!trimmedValue && !attachmentName) return
       const expectDocument = isExplicitDocumentRequest(trimmedValue)
+      const activePending = [...messages]
+        .reverse()
+        .find((m) => m.role === 'advisor' && m.pendingWebSearchConfirmation)?.pendingWebSearchConfirmation
       setMessages((prev) => [
         ...prev,
         {
@@ -186,9 +233,13 @@ export function CareerAdvisorCard({ language, readAloudEnabled }: CareerAdvisorC
         },
       ])
       setAwaitingAdvisor(true)
-      queueAdvisorReply(trimmedValue, { expectDocument, uploadedDocumentText: documentText })
+      queueAdvisorReply(trimmedValue, {
+        expectDocument,
+        uploadedDocumentText: documentText,
+        pendingWebSearchConfirmation: activePending,
+      })
     },
-    [documentContext, queueAdvisorReply],
+    [documentContext, messages, queueAdvisorReply],
   )
 
   useEffect(() => {
@@ -473,6 +524,19 @@ export function CareerAdvisorCard({ language, readAloudEnabled }: CareerAdvisorC
                       <div className="bubble__md">
                         <ReactMarkdown remarkPlugins={ [remarkGfm] }>{ msg.text }</ReactMarkdown>
                       </div>
+
+                      {msg.pendingWebSearchConfirmation ? (
+                        <div className="bubble__actions" role="group" aria-label={ ui.suggestedRepliesAria }>
+                          <button
+                            type="button"
+                            className="bubble__action bubble__action--primary"
+                            onClick={ () => confirmWebSearch(msg.pendingWebSearchConfirmation!) }
+                          >
+                            <Search size={ 16 } strokeWidth={ 2 } aria-hidden />
+                            <span>{ ui.searchOnline }</span>
+                          </button>
+                        </div>
+                      ) : null}
 
                       {openDownloadsFor[msg.id] ? (
                         <div className="bubble__actions">

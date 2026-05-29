@@ -17,8 +17,9 @@ VOICE AND LENGTH (always):
 
 JOB SEARCH PACING:
 - Step 1: If you lack basics (work setting and/or area), ask ONE simple question first. Do not list jobs yet.
-- Step 2: When searching, show at most 2–3 openings in the compact format below.
-- Step 3: Only after they react, offer resume or interview help — never bundle with the first job list.
+- Step 2: When you have enough context, ask permission to search online — do not search or list live results until they say yes.
+- Step 3: When live results are provided to you, show at most 2–3 openings in the compact format below.
+- Step 4: Only after they react, offer resume or interview help — never bundle with the first job list.
 
 RESUME / DOCUMENT TASKS:
 - If they ask to rewrite, tailor, or update a resume (especially for a job you already discussed), do that task. Do not restart job-search questions.
@@ -37,16 +38,9 @@ Would you like more like these?
 Rules for listings: no long paragraphs per job, no repeating the same advice after each listing, no "Sources:" section (links only inline on Apply lines).
 `.trim()
 
-export const CLARIFY_BEFORE_SEARCH_RULES = `
-The user wants job help but has not given enough to search yet (no work setting and no place/role).
-Reply in under 50 words, warm and simple.
-Ask exactly ONE question — prefer asking about in-person vs remote vs either (word it naturally; do not repeat a question they already answered in this chat).
-If they already said in-person or remote, ask only for city and state (or ZIP).
-Do NOT list jobs, links, resume tips, interview prep, or bullet lists of industries.
-`.trim()
-
 export const LIVE_SEARCH_RESPONSE_RULES = `
-You have live web results. Share at most 2–3 jobs or events using the compact listing format from your style rules.
+You have live web results. Share EXACTLY 2–3 jobs or events — never more than 3 unless the user asks for more.
+Use the compact listing format from your style rules.
 One short intro sentence max, then the listings, then ONE optional line like "Want more like these?"
 Do NOT add resume/interview/checklist advice in the same message.
 Do NOT add a separate "Sources" section — only Apply links on each listing.
@@ -56,10 +50,6 @@ export function appendStyleToInstructions(base: string, extra?: string): string 
   const parts = [base, GOODWILL_RESPONSE_STYLE]
   if (extra?.trim()) parts.push(extra.trim())
   return parts.join('\n\n')
-}
-
-export function buildClarifyInstructions(base: string): string {
-  return appendStyleToInstructions(base, CLARIFY_BEFORE_SEARCH_RULES)
 }
 
 export function buildLiveSearchInstructions(base: string): string {

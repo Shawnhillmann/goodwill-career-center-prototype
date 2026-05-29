@@ -22,13 +22,13 @@ export function matchStarterPrompt(q: string): StarterPromptKind | null {
 
 export const STARTER_TURN_INSTRUCTIONS: Record<StarterPromptKind, string> = {
   job:
-    'The user tapped a starter about finding a job. Reply warmly in under 55 words. Ask exactly ONE question: are they looking for in-person work, remote work, or either? Do not list jobs or search the web yet.',
+    'The user tapped a starter about finding a job. Reply warmly in under 55 words. Ask if they would like you to search current job postings online. Do not search or list jobs yet. If asking permission, set offerWebSearch in JSON (topic: jobs, querySoFar: concise query with any known role/location).',
   careers:
     'The user wants to explore career options. Reply warmly in under 55 words. Ask exactly ONE question about what they enjoy or are curious about (types of work or industries). Do not list jobs or search the web yet.',
   resume:
     'The user wants help with a resume. Reply warmly in under 55 words. Ask exactly ONE question: do they have a resume to upload, or are they starting from scratch? Do not output a full resume yet unless they uploaded one.',
   local:
-    'The user wants local career resources. Reply warmly in under 55 words. Ask exactly ONE question for their city and state (or ZIP). Do not search the web yet.',
+    'The user wants local career resources. Reply warmly in under 55 words. Ask exactly ONE question for their city and state (or ZIP). Do not search the web yet. offerWebSearch must be null until you have a location and are asking permission.',
   interviews:
     'The user wants interview practice. Reply warmly in under 55 words. Ask exactly ONE question about what role or type of job they are interviewing for. Do not run a long interview prep lecture.',
   skills:

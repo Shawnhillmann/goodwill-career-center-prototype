@@ -8,7 +8,7 @@ import {
   type ResponsesInvokeResult,
   type WebSearchToolChoice,
 } from './openaiResponses.js'
-import type { SearchIntent } from './searchIntent.js'
+import type { LiveSearchIntent } from './searchIntent.js'
 import { buildLiveSearchInstructions } from './responseStyle.js'
 import { appendWebGroundingToInstructions, formatWebResultsForInstructions } from './webGrounding.js'
 import { webSearch } from './webSearch.js'
@@ -18,7 +18,7 @@ export type WebSearchPipelineResult =
   | { ok: false; userMessage: string; detail: string }
 
 const LIVE_SEARCH_GROUNDING_RULES =
-  'Use only real results from web search. Never fabricate employers, dates, or URLs. If nothing solid appears, say so in one sentence and ask one clarifying question.'
+  'Use only real results from web search. Never fabricate employers, dates, or URLs. Return EXACTLY 2–3 listings — never more than 3. If nothing solid appears, say so in one sentence and ask one clarifying question.'
 
 function groundingFailureReason(quality: GroundingQuality): string {
   switch (quality) {
@@ -89,7 +89,7 @@ export async function runLiveWebSearchPipeline(opts: {
   apiKey: string
   baseInstructions: string
   messages: ChatMessage[]
-  intent: Exclude<SearchIntent, { kind: 'none' }>
+  intent: LiveSearchIntent
 }): Promise<WebSearchPipelineResult> {
   const instructions = buildLiveSearchInstructions(`${ opts.baseInstructions }\n\n${ LIVE_SEARCH_GROUNDING_RULES }`)
   const miniModel = selectChatModel({ hasUploadedDocument: false, isLiveWebSearch: true })
@@ -164,7 +164,7 @@ export async function runLiveWebSearchPipeline(opts: {
   // C) DuckDuckGo grounding + gpt-5-mini summarization (no web_search tool)
   try {
     const ddgStarted = Date.now()
-    const ddgResults = await webSearch(opts.intent.query, 8)
+    const ddgResults = await webSearch(opts.intent.query, 3)
     logChat('ddg_fetch', {
       resultCount: ddgResults.length,
       latencyMs: Date.now() - ddgStarted,

@@ -1,5 +1,6 @@
 import express from 'express'
 
+import { invokeAdvisorChat } from '../lib/advisorChat.js'
 import { buildSystemPrompt, type ChatMessage } from '../lib/advisorPrompt.js'
 
 import { getAiProvider, getOpenAiConfig } from '../lib/aiProvider.js'
@@ -24,9 +25,13 @@ import { selectChatModel } from '../lib/openaiModels.js'
 
 import { invokeOpenAiResponsesText } from '../lib/openaiResponses.js'
 
-import { buildClarifyInstructions } from '../lib/responseStyle.js'
-import { isLiveSearchIntent, resolveEffectiveSearchIntent, type SearchIntent } from '../lib/searchIntent.js'
 import { matchStarterPrompt, STARTER_TURN_INSTRUCTIONS } from '../lib/starterPrompts.js'
+import {
+  inferPendingOfferFromConversation,
+  isLiveSearchIntent,
+  resolveWebSearchAction,
+  type PendingWebSearchConfirmation,
+} from '../lib/searchIntent.js'
 
 import { appendWebGroundingToInstructions, formatWebResultsForInstructions } from '../lib/webGrounding.js'
 
@@ -43,6 +48,10 @@ type ChatRequestBody = {
   language: string
 
   uploadedDocumentText?: string
+
+  confirmWebSearch?: boolean
+
+  pendingWebSearchConfirmation?: PendingWebSearchConfirmation
 
 }
 
@@ -116,6 +125,15 @@ function blockIfHallucinated(reply: string, lastUser: string): string | null {
 
 
 
+function chatJsonResponse(reply: string, pending: PendingWebSearchConfirmation | null) {
+  return {
+    reply,
+    ...(pending ? { pendingWebSearchConfirmation: pending } : {}),
+  }
+}
+
+
+
 export const chatRouter = express.Router()
 
 
@@ -162,7 +180,7 @@ chatRouter.post('/', async (req, res) => {
 
     .filter((m) => m && (m.role === 'user' || m.role === 'assistant') && isNonEmptyString(m.content))
 
-    .slice(-30)
+    .slice(-20)
 
 
 
@@ -178,7 +196,12 @@ chatRouter.post('/', async (req, res) => {
 
   const hasUploadedDocument = Boolean(body.uploadedDocumentText?.trim())
 
-  let intent = lastUser ? resolveEffectiveSearchIntent(messages, lastUser) : { kind: 'none' as const }
+  const searchAction = lastUser
+    ? resolveWebSearchAction(messages, lastUser, {
+        confirmWebSearch: body.confirmWebSearch,
+        pendingWebSearchConfirmation: body.pendingWebSearchConfirmation,
+      })
+    : { action: 'none' as const }
 
 
 
@@ -198,19 +221,19 @@ chatRouter.post('/', async (req, res) => {
 
 
 
-  // Bedrock: optional DuckDuckGo prefetch injected into system instructions (not fake assistant turns).
+  // Bedrock: DuckDuckGo prefetch only after explicit search confirmation.
 
-  if (aiProvider === 'bedrock' && isLiveSearchIntent(intent) && !intent.needsClarification) {
+  if (aiProvider === 'bedrock' && searchAction.action === 'search') {
 
     try {
 
-      const results = await webSearch(intent.query, 6)
+      const results = await webSearch(searchAction.intent.query, 3)
 
       if (results.length) {
 
         system = appendWebGroundingToInstructions(system, formatWebResultsForInstructions(results))
 
-        logChat('bedrock_grounding', { resultCount: results.length, intentKind: intent.kind })
+        logChat('bedrock_grounding', { resultCount: results.length, intentKind: searchAction.intent.kind })
 
       }
 
@@ -250,93 +273,15 @@ chatRouter.post('/', async (req, res) => {
 
     try {
 
-      const lastFewUser = [...messages].reverse().filter((m) => m.role === 'user').slice(0, 4).map((m) => m.content.toLowerCase())
-
-      const convoJobContext = lastFewUser.some((t) =>
-
-        /\b(job|jobs|hiring|openings|apply|positions?|roles?|work)\b/.test(t),
-
-      )
-
-      const explicitSearchAsk = /\b(web\s*search|search\s+the\s+web|look\s+this\s+up|use the web)\b/i.test(lastUser)
-
-
-
-      const effectiveIntent: SearchIntent =
-
-        intent.kind === 'none' && explicitSearchAsk && convoJobContext
-
-          ? { kind: 'jobs', query: lastUser, needsClarification: false }
-
-          : intent
-
-      const reliableChatModel = selectChatModel({ hasUploadedDocument: true, isLiveWebSearch: false })
-
-      if (starterKind) {
-        logChat('route_starter', { starterKind })
-        const starterResult = await invokeOpenAiResponsesText({
-          apiKey,
-          model: reliableChatModel,
-          instructions: `${ system }\n\n${ STARTER_TURN_INSTRUCTIONS[starterKind] }`,
-          messages,
-          maxOutputTokens: 500,
-        })
-        const starterReply = starterResult.text.trim()
-        if (!starterReply) {
-          return sendError(res, 502, 'The AI did not return a response. Please try again.')
-        }
-        logChat('request_complete', {
-          path: 'starter',
-          starterKind,
-          model: reliableChatModel,
-          latencyMs: Date.now() - requestStarted,
-          replyLength: starterReply.length,
-        })
-        return res.json({ reply: starterReply })
-      }
-
-      if (
-        isLiveSearchIntent(effectiveIntent) &&
-        effectiveIntent.needsClarification &&
-        !isExplicitDocumentRequest(lastUser, hasUploadedDocument)
-      ) {
-        logChat('route_clarify', {
-          intentKind: effectiveIntent.kind,
-          queryLength: effectiveIntent.query.length,
-        })
-
-        const clarifyResult = await invokeOpenAiResponsesText({
-          apiKey,
-          model: reliableChatModel,
-          instructions: buildClarifyInstructions(system),
-          messages,
-          maxOutputTokens: 450,
-        })
-
-        const clarifyReply = clarifyResult.text.trim()
-        if (!clarifyReply) {
-          return sendError(res, 502, 'The AI did not return a response. Please try again.')
-        }
-
-        logChat('request_complete', {
-          path: 'clarify',
-          model: reliableChatModel,
-          latencyMs: Date.now() - requestStarted,
-          replyLength: clarifyReply.length,
-        })
-
-        return res.json({ reply: clarifyReply })
-      }
-
-      if (isLiveSearchIntent(effectiveIntent)) {
+      if (searchAction.action === 'search' && isLiveSearchIntent(searchAction.intent)) {
 
         logChat('route_live_search', {
 
-          intentKind: effectiveIntent.kind,
+          intentKind: searchAction.intent.kind,
 
-          needsClarification: effectiveIntent.needsClarification,
+          queryLength: searchAction.intent.query.length,
 
-          queryLength: effectiveIntent.query.length,
+          confirmedViaButton: Boolean(body.confirmWebSearch),
 
         })
 
@@ -350,7 +295,7 @@ chatRouter.post('/', async (req, res) => {
 
           messages,
 
-          intent: effectiveIntent,
+          intent: searchAction.intent,
 
         })
 
@@ -394,103 +339,61 @@ chatRouter.post('/', async (req, res) => {
 
       }
 
-
-
-      // Simple chat / resume analysis
-
-      const primaryModel = selectChatModel({ hasUploadedDocument, isLiveWebSearch: false })
-
-      const retryModel = selectChatModel({ hasUploadedDocument: true, isLiveWebSearch: false })
-
-
-
-      logChat('route_chat', {
-
-        model: primaryModel,
-
-        hasUploadedDocument,
-
-        messageCount: messages.length,
-
-      })
-
-
-
-      let result = await invokeOpenAiResponsesText({
-
-        apiKey,
-
-        model: primaryModel,
-
-        instructions: system,
-
-        messages,
-
-        maxOutputTokens: hasUploadedDocument ? 700 : 400,
-
-      })
-
-
-
-      if (!result.text.trim() && primaryModel !== retryModel) {
-
-        logChat('chat_empty_retry', { from: primaryModel, to: retryModel })
-
-        result = await invokeOpenAiResponsesText({
-
+      if (docOnly) {
+        const docModel = selectChatModel({ hasUploadedDocument: true, isLiveWebSearch: false })
+        logChat('route_document', { model: docModel })
+        const docResult = await invokeOpenAiResponsesText({
           apiKey,
-
-          model: retryModel,
-
+          model: docModel,
           instructions: system,
-
           messages,
-
-          maxOutputTokens: hasUploadedDocument ? 700 : 400,
-
+          maxOutputTokens: 700,
         })
-
+        const docReply = docResult.text.trim()
+        if (!docReply) {
+          return sendError(res, 502, 'The AI did not return a response. Please try again.')
+        }
+        logChat('request_complete', {
+          path: 'document',
+          model: docModel,
+          latencyMs: Date.now() - requestStarted,
+          replyLength: docReply.length,
+        })
+        return res.json({ reply: docReply })
       }
 
+      const instructions = starterKind
+        ? `${ system }\n\n${ STARTER_TURN_INSTRUCTIONS[starterKind] }`
+        : system
 
+      const chatResult = await invokeAdvisorChat({
+        apiKey,
+        instructions,
+        messages,
+        hasUploadedDocument,
+        maxOutputTokens: hasUploadedDocument ? 700 : 500,
+      })
 
-      const reply = result.text.trim()
-
-      if (!reply) {
-
-        logChat('chat_empty_final', { model: primaryModel, latencyMs: result.latencyMs })
-
+      if (!chatResult.reply) {
         return sendError(res, 502, 'The AI did not return a response. Please try again.')
-
       }
 
-
-
-      const blocked = blockIfHallucinated(reply, lastUser)
-
+      const blocked = blockIfHallucinated(chatResult.reply, lastUser)
       if (blocked) {
-
         return sendError(res, 502, blocked, 'chat_hallucination_guard')
-
       }
-
-
 
       logChat('request_complete', {
-
-        path: 'chat',
-
-        model: primaryModel,
-
+        path: starterKind ? 'starter' : 'chat',
+        starterKind: starterKind ?? undefined,
+        model: chatResult.model,
+        structured: chatResult.structured,
         latencyMs: Date.now() - requestStarted,
-
-        replyLength: reply.length,
-
+        replyLength: chatResult.reply.length,
+        hasPendingSearch: Boolean(chatResult.pendingWebSearchConfirmation),
       })
 
-
-
-      return res.json({ reply })
+      return res.json(chatJsonResponse(chatResult.reply, chatResult.pendingWebSearchConfirmation))
 
     } catch (err: unknown) {
 
@@ -564,6 +467,10 @@ chatRouter.post('/', async (req, res) => {
 
 
 
+    const pending = inferPendingOfferFromConversation(messages, {
+      assistantAskedQuestion: reply.trimEnd().endsWith('?'),
+    })
+
     logChat('request_complete', {
 
       path: 'bedrock',
@@ -572,12 +479,13 @@ chatRouter.post('/', async (req, res) => {
 
       replyLength: reply.length,
 
+      hasPendingSearch: Boolean(pending),
+
     })
 
 
 
-    res.json({ reply })
-
+    res.json(chatJsonResponse(reply, pending))
   } catch (err: unknown) {
 
     logChat('bedrock_error', {
@@ -595,5 +503,4 @@ chatRouter.post('/', async (req, res) => {
   }
 
 })
-
 

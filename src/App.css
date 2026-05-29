@@ -1446,6 +1446,17 @@ button {
   background: var(--gw-blue-soft);
 }
 
+.bubble__action--primary {
+  background: var(--gw-blue);
+  color: var(--gw-white);
+  border-color: var(--gw-blue);
+}
+
+.bubble__action--primary:hover {
+  background: var(--gw-blue-dark);
+  border-color: var(--gw-blue-dark);
+}
+
 .advisor-card__composer-stack {
   display: flex;
   flex-direction: column;
