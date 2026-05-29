@@ -23,7 +23,7 @@ const server = app.listen(port, () => {
   // eslint-disable-next-line no-console
   console.log(
     openAi.apiKey
-      ? `OpenAI: chat=${ models.mini }${ models.nano ? ` (nano opt-in: ${ models.nano })` : '' } / search-fallback=${ models.searchFallback }`
+      ? `OpenAI: chat=${ models.mini }${ models.nano ? ` (nano opt-in: ${ models.nano })` : '' }`
       : 'OpenAI: OPENAI_API_KEY not set',
   )
 })

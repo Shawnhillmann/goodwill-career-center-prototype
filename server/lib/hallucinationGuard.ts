@@ -27,25 +27,3 @@ export function looksLikeUngroundedSearchClaim(text: string): boolean {
   if (!claimsSearch) return false
   return extractHttpLinks(text).length === 0
 }
-
-export function requiresFreshData(userText: string): boolean {
-  const s = userText.toLowerCase()
-  return (
-    /\b(job fair|job fairs|career fair|career fairs|hiring event|hiring events|career expo|recruiting event|recruiting events)\b/.test(
-      s,
-    ) ||
-    /\b(this week|this month|next week|next month|upcoming|today|tomorrow)\b/.test(s) ||
-    /\b(local resources|near me)\b/.test(s)
-  )
-}
-
-export type GroundingQuality = 'ok' | 'empty' | 'placeholder' | 'ungrounded_claim' | 'no_links'
-
-export function assessLiveSearchOutput(text: string, citationCount: number): GroundingQuality {
-  if (!text?.trim()) return 'empty'
-  if (looksLikePlaceholderTemplate(text)) return 'placeholder'
-  if (looksLikeUngroundedSearchClaim(text) && citationCount === 0) return 'ungrounded_claim'
-  const linkCount = extractHttpLinks(text).length
-  if (linkCount === 0 && citationCount === 0) return 'no_links'
-  return 'ok'
-}

@@ -52,7 +52,6 @@ module.exports = async function vercelHandler(req, res) {
         OPENAI_API_KEY: envBool('OPENAI_API_KEY'),
         OPENAI_MODEL: Boolean((process.env.OPENAI_MODEL || '').trim()),
         OPENAI_MODEL_NANO: Boolean((process.env.OPENAI_MODEL_NANO || '').trim()),
-        OPENAI_MODEL_SEARCH_FALLBACK: Boolean((process.env.OPENAI_MODEL_SEARCH_FALLBACK || '').trim()),
       })
     }
 

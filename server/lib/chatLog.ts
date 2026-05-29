@@ -25,7 +25,6 @@ export function logChat502(fields: {
   lastUserMessage: string
   route: string
   model?: string
-  searchTriggered: boolean
   uploadPresent: boolean
   rawResponseLength?: number
   parsedResponseLength?: number
@@ -43,7 +42,6 @@ export function logChat502(fields: {
     lastUserLength: fields.lastUserMessage.length,
     route: fields.route,
     model: fields.model,
-    searchTriggered: fields.searchTriggered,
     uploadPresent: fields.uploadPresent,
     rawResponseLength: fields.rawResponseLength,
     parsedResponseLength: fields.parsedResponseLength,

@@ -3,12 +3,10 @@ import express from 'express'
 import { buildSystemPrompt, type ChatMessage } from '../lib/advisorPrompt.js'
 import { createRequestId, logChat, logChat502 } from '../lib/chatLog.js'
 import { sendError } from '../lib/errors.js'
-import { looksLikePlaceholderTemplate } from '../lib/hallucinationGuard.js'
+import { looksLikeUngroundedSearchClaim } from '../lib/hallucinationGuard.js'
 import { invokePlainAdvisorChat } from '../lib/plainChat.js'
 import { invokeOpenAiResponsesText, type ResponsesInvokeResult } from '../lib/openaiResponses.js'
 import { getOpenAiConfig, missingOpenAiEnv, selectChatModel } from '../lib/openaiModels.js'
-import { buildConciseSearchQuery, shouldRunWebSearch } from '../lib/searchIntent.js'
-import { runLiveWebSearchPipeline } from '../lib/webSearchPipeline.js'
 
 type ChatRequestSource = 'typed' | 'quick_option'
 
@@ -75,7 +73,6 @@ chatRouter.post('/', async (req, res) => {
   const lastUser = [...messages].reverse().find((m) => m.role === 'user')?.content ?? ''
   const hasUploadedDocument = Boolean(body.uploadedDocumentText?.trim())
   const docOnly = Boolean(lastUser && isExplicitDocumentRequest(lastUser, hasUploadedDocument))
-  const searchDecision = shouldRunWebSearch(messages, hasUploadedDocument)
 
   const systemDocOnly = docOnly
     ? '\n\nIf the user requests a resume, CV, cover letter, or any written document, output ONLY the document text. Do NOT include any introduction, preface, commentary, or closing lines. Do not ask questions. The output must start immediately with the document content.'
@@ -90,8 +87,6 @@ chatRouter.post('/', async (req, res) => {
     lastUserLength: lastUser.length,
     lastUserPreview: lastUser.slice(0, 80),
     uploadedDoc: hasUploadedDocument,
-    webSearch: searchDecision.run,
-    searchTopic: searchDecision.run ? searchDecision.topic : undefined,
     docOnly,
   })
 
@@ -104,73 +99,43 @@ chatRouter.post('/', async (req, res) => {
   let model = ''
   let modelCallMs = 0
   let fallbackUsed = false
-  let path: 'document' | 'search' | 'chat' = docOnly ? 'document' : 'chat'
+  let path: 'document' | 'chat' = docOnly ? 'document' : 'chat'
   let lastModelResult: ResponsesInvokeResult | null = null
 
   try {
-    if (searchDecision.run && !docOnly) {
-      const topic = searchDecision.topic
-      const query = buildConciseSearchQuery(messages, topic)
-      logChat('route_search', { requestId, topic, queryLength: query.length, source })
-
-      const searchStarted = Date.now()
-      const pipeline = await runLiveWebSearchPipeline({
+    if (docOnly) {
+      model = selectChatModel({ hasUploadedDocument: true })
+      const docStarted = Date.now()
+      const docResult = await invokeOpenAiResponsesText({
         apiKey,
-        baseInstructions: instructions,
+        model,
+        instructions,
         messages,
-        intent: { kind: topic, query },
+        maxOutputTokens: 900,
+        reasoningEffort: 'minimal',
       })
-      modelCallMs = Date.now() - searchStarted
-      if (pipeline.ok) {
-        model = pipeline.model
-        fallbackUsed = pipeline.stage !== 'A_mini_auto'
-      }
-
-      if (pipeline.ok && !looksLikePlaceholderTemplate(pipeline.reply)) {
-        path = 'search'
-        reply = pipeline.reply.trim()
-      } else {
-        logChat('search_fallback_to_chat', {
-          requestId,
-          source,
-          topic,
-          ok: pipeline.ok,
-          stage: pipeline.ok ? pipeline.stage : undefined,
-        })
-      }
+      modelCallMs = Date.now() - docStarted
+      lastModelResult = docResult
+      reply = docResult.text.trim()
+    } else {
+      const chat = await invokePlainAdvisorChat({
+        apiKey,
+        instructions,
+        messages,
+        hasUploadedDocument,
+        maxOutputTokens: hasUploadedDocument ? 800 : 600,
+        requestId,
+      })
+      reply = chat.reply
+      model = chat.model
+      modelCallMs = chat.modelCallMs
+      fallbackUsed = chat.fallbackUsed
+      lastModelResult = chat.lastResult
+      path = 'chat'
     }
 
-    if (!reply) {
-      if (docOnly) {
-        model = selectChatModel({ hasUploadedDocument: true, isLiveWebSearch: false })
-        const docStarted = Date.now()
-        const docResult = await invokeOpenAiResponsesText({
-          apiKey,
-          model,
-          instructions,
-          messages,
-          maxOutputTokens: 900,
-          reasoningEffort: 'minimal',
-        })
-        modelCallMs = Date.now() - docStarted
-        lastModelResult = docResult
-        reply = docResult.text.trim()
-      } else {
-        const chat = await invokePlainAdvisorChat({
-          apiKey,
-          instructions,
-          messages,
-          hasUploadedDocument,
-          maxOutputTokens: hasUploadedDocument ? 800 : 600,
-          requestId,
-        })
-        reply = chat.reply
-        model = chat.model
-        modelCallMs = chat.modelCallMs
-        fallbackUsed = chat.fallbackUsed
-        lastModelResult = chat.lastResult
-        path = 'chat'
-      }
+    if (reply && looksLikeUngroundedSearchClaim(reply)) {
+      logChat('ungrounded_listing_claim', { requestId, model, path })
     }
 
     if (!reply) {
@@ -180,7 +145,6 @@ chatRouter.post('/', async (req, res) => {
         lastUserMessage: lastUser,
         route: '/api/chat',
         model,
-        searchTriggered: searchDecision.run,
         uploadPresent: hasUploadedDocument,
         retryUsed: fallbackUsed,
         path,
@@ -197,7 +161,6 @@ chatRouter.post('/', async (req, res) => {
       source,
       totalMs: Date.now() - requestStarted,
       modelCallMs,
-      webSearch: path === 'search',
       fallbackUsed,
       model,
       uploadedDoc: hasUploadedDocument,
@@ -214,7 +177,6 @@ chatRouter.post('/', async (req, res) => {
       lastUserMessage: lastUser,
       route: '/api/chat',
       model,
-      searchTriggered: searchDecision.run,
       uploadPresent: hasUploadedDocument,
       retryUsed: fallbackUsed,
       exception: errorMessage,
@@ -222,7 +184,7 @@ chatRouter.post('/', async (req, res) => {
       messageCount: messages.length,
       ...diag,
     })
-    logChat('openai_error', { requestId, source, error: errorMessage, webSearch: searchDecision.run })
+    logChat('openai_error', { requestId, source, error: errorMessage })
     return sendError(res, 502, 'Unable to get an AI response right now. Please try again in a moment.', errorMessage)
   }
 })

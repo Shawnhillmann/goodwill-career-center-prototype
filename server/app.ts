@@ -2,7 +2,6 @@ import cors from 'cors'
 import express from 'express'
 import { getOpenAiConfig, getOpenAiModelIds } from './lib/openaiModels.js'
 import { chatRouter } from './routes/chat.js'
-import { searchRouter } from './routes/search.js'
 import { documentRouter } from './routes/document.js'
 
 export function createApp() {
@@ -15,7 +14,6 @@ export function createApp() {
     }),
   )
 
-  // Keep this low: uploads use multipart (multer), not JSON.
   app.use(express.json({ limit: '1mb' }))
 
   app.get('/api/health', (_req, res) => {
@@ -42,8 +40,6 @@ export function createApp() {
   })
 
   app.use('/api/chat', chatRouter)
-  app.use('/api/search', searchRouter)
-  // Lazy-load upload route so Node-only PDF parsing libs don't load for plain chat requests.
   app.use('/api/upload', async (req, res, next) => {
     try {
       const mod = await import('./routes/upload.js')

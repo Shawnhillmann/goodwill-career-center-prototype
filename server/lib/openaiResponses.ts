@@ -15,11 +15,8 @@ type ResponsesCreateResult = {
   incomplete_details?: { reason?: string }
 }
 
-type UrlCitation = { url: string; title?: string }
-
 export type ResponsesInvokeResult = {
   text: string
-  citationCount: number
   linkCountInText: number
   latencyMs: number
   responseStatus?: string
@@ -83,32 +80,6 @@ function extractOutputText(json: ResponsesCreateResult): string {
   return ''
 }
 
-function extractUrlCitations(json: ResponsesCreateResult): UrlCitation[] {
-  const output = Array.isArray(json.output) ? json.output : []
-  const urls: UrlCitation[] = []
-  const seen = new Set<string>()
-
-  for (const item of output) {
-    const content = Array.isArray((item as { content?: unknown }).content)
-      ? ((item as { content: Array<{ annotations?: unknown[] }> }).content ?? [])
-      : []
-    for (const c of content) {
-      const annotations = Array.isArray(c?.annotations) ? c.annotations : []
-      for (const a of annotations) {
-        const ann = a as { type?: string; url?: string; title?: string }
-        if (ann?.type !== 'url_citation') continue
-        const url = typeof ann?.url === 'string' ? ann.url : ''
-        if (!url || seen.has(url)) continue
-        seen.add(url)
-        const title = typeof ann?.title === 'string' ? ann.title : undefined
-        urls.push({ url, title })
-      }
-    }
-  }
-
-  return urls
-}
-
 const OPENAI_RESPONSES_TIMEOUT_MS = 55_000
 
 export type ReasoningEffort = 'minimal' | 'low' | 'medium' | 'high'
@@ -152,12 +123,9 @@ function buildInvokeResult(
   text: string,
   rawBodyLength: number,
 ): ResponsesInvokeResult {
-  const citations = extractUrlCitations(json)
-  const linkCountInText = extractHttpLinks(text).length
   return {
     text,
-    citationCount: citations.length,
-    linkCountInText,
+    linkCountInText: extractHttpLinks(text).length,
     latencyMs: Date.now() - startedAt,
     responseStatus: json.status,
     rawBodyLength,
@@ -192,50 +160,6 @@ export async function invokeOpenAiResponsesText(params: {
   const response = await openAiResponsesFetch(body, params.apiKey)
   const { json, rawBodyLength } = await parseResponsesBody(response)
   const text = extractOutputText(json)
-  return buildInvokeResult(json, startedAt, text, rawBodyLength)
-}
-
-export type WebSearchToolChoice = 'auto' | 'required'
-
-export async function invokeOpenAiResponsesWebSearch(params: {
-  apiKey: string
-  model: string
-  instructions: string
-  messages: ChatMessage[]
-  toolChoice?: WebSearchToolChoice
-  maxOutputTokens?: number
-  /** When false, citations stay inline only (no trailing Sources block). */
-  appendSourcesBlock?: boolean
-}): Promise<ResponsesInvokeResult> {
-  const startedAt = Date.now()
-  const toolChoice = params.toolChoice ?? 'auto'
-
-  const response = await openAiResponsesFetch(
-    {
-      model: params.model,
-      instructions: params.instructions,
-      input: params.messages.map((m) => ({ role: m.role, content: m.content })),
-      reasoning: { effort: 'low' },
-      tools: [{ type: 'web_search' }],
-      tool_choice: toolChoice,
-      max_output_tokens: params.maxOutputTokens ?? 480,
-      text: { format: { type: 'text' } },
-    },
-    params.apiKey,
-  )
-
-  const { json, rawBodyLength } = await parseResponsesBody(response)
-  let text = extractOutputText(json)
-  const citations = extractUrlCitations(json)
-
-  if (params.appendSourcesBlock !== false && citations.length) {
-    const sources = citations
-      .slice(0, 3)
-      .map((c) => `- ${ c.title ? `[${ c.title }](${ c.url })` : c.url }`)
-      .join('\n')
-    text = `${ text }\n\nSources:\n${ sources }`.trim()
-  }
-
   return buildInvokeResult(json, startedAt, text, rawBodyLength)
 }
 

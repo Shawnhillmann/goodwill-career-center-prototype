@@ -19,7 +19,7 @@ export async function invokePlainAdvisorChat(opts: {
   maxOutputTokens?: number
   requestId?: string
 }): Promise<PlainChatResult> {
-  const model = selectChatModel({ hasUploadedDocument: opts.hasUploadedDocument, isLiveWebSearch: false })
+  const model = selectChatModel({ hasUploadedDocument: opts.hasUploadedDocument })
   const baseTokens = opts.maxOutputTokens ?? (opts.hasUploadedDocument ? 800 : 600)
 
   const startedAt = Date.now()

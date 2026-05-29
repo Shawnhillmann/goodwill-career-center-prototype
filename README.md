@@ -25,13 +25,7 @@ OPENAI_MODEL=gpt-5-mini
 PORT=8787
 ```
 
-Optional model overrides:
-
-```bash
-OPENAI_MODEL_SEARCH_FALLBACK=gpt-5.5
-# Opt-in only — chat uses OPENAI_MODEL (gpt-5-mini) unless you set:
-# OPENAI_MODEL_NANO=gpt-5-nano
-```
+Optional: set `OPENAI_MODEL_NANO` only if you explicitly want nano for chat (default is mini).
 
 Restart `npm run dev:all` after editing `.env` (env vars are loaded once at server startup).
 
@@ -69,32 +63,29 @@ The frontend and API deploy together. `npm run build` bundles the Express API in
 ```bash
 OPENAI_API_KEY=your_openai_api_key
 OPENAI_MODEL=gpt-5-mini
-# Optional (defaults shown):
-# OPENAI_MODEL_NANO=gpt-5-nano
-# OPENAI_MODEL_SEARCH_FALLBACK=gpt-5.5
 ```
 
 Redeploy after changing env vars. Verify: `https://<your-app>.vercel.app/api/health` should return JSON with `"openaiConfigured": true`.
 
-Locally, the API runs as a separate Express process (`npm run server`); on Vercel it runs as one bundled serverless function.
-
 ## API endpoints
 
-- `POST /api/chat` — Career coaching, document analysis, and rare automatic web search. Returns `{ reply }`.
-- `POST /api/search` — Dedicated live-search endpoint (rare; `/api/chat` handles search automatically).
+- `POST /api/chat` — Career coaching and document analysis. Returns `{ reply }`. No live web search.
 - `POST /api/upload` — Upload `.docx`, `.pdf`, or `.txt` (max 5MB) and returns extracted text.
 - `POST /api/document/export` — Download chat content as `.docx` or `.pdf`.
 - `POST /api/document/resume` — Generate a downloadable `.docx` from resume text.
 
 ## Architecture
 
-The advisor prioritizes, in order:
+Single OpenAI path for all advisor replies (`gpt-5-mini` via `OPENAI_MODEL` by default):
 
-1. **Conversation** — one OpenAI call (`gpt-5-mini` via `OPENAI_MODEL` by default)
-2. **Uploaded documents** — one OpenAI call with document context (`gpt-5-mini`)
-3. **Web search** — multi-stage pipeline only when current external information is required
+1. **Conversation** — coaching, interview prep, job search guidance (no live listings)
+2. **Uploaded documents** — resume analysis, tailoring, cover letters
+3. **Doc-only generation** — full resume/CV/cover letter output when requested
+
+The advisor does **not** browse the web. For current jobs or local resources it coaches users on search terms, platforms, and filters.
 
 ## Architecture constraints (by design)
 - No database
 - No auth/login
 - No credentials in the browser
+- No live web search
