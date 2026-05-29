@@ -405,7 +405,7 @@ chatRouter.post('/', async (req, res) => {
         instructions,
         messages,
         hasUploadedDocument,
-        maxOutputTokens: hasUploadedDocument ? 600 : 280,
+        maxOutputTokens: hasUploadedDocument ? 600 : 400,
       })
 
       if (!chatResult.reply) {
@@ -436,7 +436,8 @@ chatRouter.post('/', async (req, res) => {
         retried: chatResult.retried,
         messageCount: messages.length,
         hasUploadedDocument,
-        webSearch: false,
+        plainTextFallbackMs: chatResult.timings.plainTextFallbackMs,
+        usedPlainTextFallback: chatResult.usedPlainTextFallback,
       })
 
       logChat('request_complete', {

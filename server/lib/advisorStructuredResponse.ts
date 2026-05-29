@@ -71,6 +71,11 @@ function safeJsonParse(text: string): unknown | null {
   }
 }
 
+function looksLikeJsonEnvelope(text: string): boolean {
+  const t = text.trim()
+  return t.startsWith('{') && (t.includes('"reply"') || t.includes("'reply'"))
+}
+
 /** Extract the first balanced `{ ... }` object from mixed model output. */
 export function extractJsonObject(text: string): string | null {
   const fenced = text.match(/```(?:json)?\s*([\s\S]*?)```/i)
@@ -104,8 +109,7 @@ export function extractJsonObject(text: string): string | null {
   return null
 }
 
-/** Remove leaked JSON / schema fragments from user-visible text. */
-export function sanitizeVisibleReply(text: string): string {
+function sanitizeProseFragment(text: string): string {
   let s = text.trim()
   if (!s) return ''
 
@@ -122,6 +126,25 @@ export function sanitizeVisibleReply(text: string): string {
   return s.trim()
 }
 
+/** Remove leaked JSON / schema fragments from user-visible prose (not full JSON envelopes). */
+export function sanitizeVisibleReply(text: string): string {
+  const trimmed = text.trim()
+  if (!trimmed) return ''
+
+  if (looksLikeJsonEnvelope(trimmed)) {
+    const blob = extractJsonObject(trimmed)
+    const parsed = safeJsonParse(blob ?? trimmed)
+    if (parsed && typeof parsed === 'object') {
+      const replyRaw = (parsed as Record<string, unknown>).reply
+      if (typeof replyRaw === 'string' && replyRaw.trim()) {
+        return sanitizeProseFragment(replyRaw)
+      }
+    }
+  }
+
+  return sanitizeProseFragment(trimmed)
+}
+
 export function normalizeStructuredAdvisorResponse(
   raw: unknown,
   messages: ChatMessage[],
@@ -129,7 +152,7 @@ export function normalizeStructuredAdvisorResponse(
   if (!raw || typeof raw !== 'object') return null
   const obj = raw as Record<string, unknown>
   const replyRaw = typeof obj.reply === 'string' ? obj.reply.trim() : ''
-  const reply = sanitizeVisibleReply(replyRaw)
+  const reply = sanitizeProseFragment(replyRaw)
   if (!reply) return null
 
   let offerWebSearch: PendingWebSearchConfirmation | null = null
@@ -178,18 +201,34 @@ export function parseStructuredAdvisorJson(text: string, messages: ChatMessage[]
     if (parsed) {
       const normalized = normalizeStructuredAdvisorResponse(parsed, messages)
       if (normalized) {
-        const reply = sanitizeVisibleReply(proseBefore || normalized.reply)
+        const reply = sanitizeProseFragment(proseBefore || normalized.reply)
         if (!reply) return null
         return { reply, offerWebSearch: normalized.offerWebSearch }
       }
     }
     if (proseBefore) {
-      return { reply: sanitizeVisibleReply(proseBefore), offerWebSearch: null }
+      return { reply: sanitizeProseFragment(proseBefore), offerWebSearch: null }
     }
   }
 
-  const sanitized = sanitizeVisibleReply(trimmed)
+  const sanitized = sanitizeProseFragment(trimmed)
   if (sanitized && !JSON_LEAK_MARKERS.test(sanitized)) {
+    return { reply: sanitized, offerWebSearch: null }
+  }
+
+  return null
+}
+
+/** Best-effort visible reply from raw model output (structured JSON, mixed, or plain text). */
+export function extractVisibleReplyFromModelOutput(
+  text: string,
+  messages: ChatMessage[],
+): StructuredAdvisorResponse | null {
+  const parsed = parseStructuredAdvisorJson(text, messages)
+  if (parsed?.reply) return parsed
+
+  const sanitized = sanitizeVisibleReply(text)
+  if (sanitized) {
     return { reply: sanitized, offerWebSearch: null }
   }
 

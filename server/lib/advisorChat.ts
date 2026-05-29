@@ -1,12 +1,13 @@
 import type { ChatMessage } from './advisorPrompt.js'
+import { logChat } from './chatLog.js'
 import {
   advisorResponseJsonSchema,
-  parseStructuredAdvisorJson,
+  extractVisibleReplyFromModelOutput,
   sanitizeVisibleReply,
   STRUCTURED_ADVISOR_JSON_INSTRUCTIONS,
   type StructuredAdvisorResponse,
 } from './advisorStructuredResponse.js'
-import { invokeOpenAiResponsesStructuredJson } from './openaiResponses.js'
+import { invokeOpenAiResponsesStructuredJson, invokeOpenAiResponsesText } from './openaiResponses.js'
 import { selectChatModel } from './openaiModels.js'
 
 export type AdvisorChatTimings = {
@@ -15,6 +16,7 @@ export type AdvisorChatTimings = {
   structuredParseMs: number
   retryMs: number
   fallbackMs: number
+  plainTextFallbackMs: number
 }
 
 export type AdvisorChatResult = {
@@ -24,6 +26,7 @@ export type AdvisorChatResult = {
   structured: boolean
   timings: AdvisorChatTimings
   retried: boolean
+  usedPlainTextFallback: boolean
 }
 
 export async function invokeAdvisorChat(opts: {
@@ -37,14 +40,15 @@ export async function invokeAdvisorChat(opts: {
   const primaryModel = selectChatModel({ hasUploadedDocument: opts.hasUploadedDocument, isLiveWebSearch: false })
   const retryModel = selectChatModel({ hasUploadedDocument: true, isLiveWebSearch: false })
   const structuredInstructions = `${ opts.instructions }\n\n${ STRUCTURED_ADVISOR_JSON_INSTRUCTIONS }`
-  const maxTokens =
-    opts.maxOutputTokens ?? (opts.hasUploadedDocument ? 600 : 280)
+  const maxTokens = opts.maxOutputTokens ?? (opts.hasUploadedDocument ? 600 : 400)
 
   let modelCallMs = 0
   let structuredParseMs = 0
   let retryMs = 0
   let fallbackMs = 0
+  let plainTextFallbackMs = 0
   let retried = false
+  let usedPlainTextFallback = false
 
   const modelCallStart = Date.now()
   let model = primaryModel
@@ -59,11 +63,10 @@ export async function invokeAdvisorChat(opts: {
   modelCallMs += Date.now() - modelCallStart
 
   const parseStart = Date.now()
-  let parsed = parseStructuredAdvisorJson(raw.text, opts.messages)
+  let parsed = extractVisibleReplyFromModelOutput(raw.text, opts.messages)
   structuredParseMs += Date.now() - parseStart
 
-  // Retry only when the model returned nothing — not on parse failure (avoid extra latency).
-  if (!raw.text.trim() && primaryModel !== retryModel) {
+  if (!parsed?.reply && !raw.text.trim() && primaryModel !== retryModel) {
     retried = true
     model = retryModel
     const retryStart = Date.now()
@@ -79,7 +82,7 @@ export async function invokeAdvisorChat(opts: {
     modelCallMs += retryMs
 
     const retryParseStart = Date.now()
-    parsed = parseStructuredAdvisorJson(raw.text, opts.messages)
+    parsed = extractVisibleReplyFromModelOutput(raw.text, opts.messages)
     structuredParseMs += Date.now() - retryParseStart
   }
 
@@ -88,35 +91,57 @@ export async function invokeAdvisorChat(opts: {
       reply: sanitizeVisibleReply(parsed.reply),
       pendingWebSearchConfirmation: parsed.offerWebSearch,
       model,
-      structured: true,
+      structured: !usedPlainTextFallback,
       retried,
+      usedPlainTextFallback,
       timings: {
         totalMs: Date.now() - startedAt,
         modelCallMs,
         structuredParseMs,
         retryMs,
         fallbackMs,
+        plainTextFallbackMs,
       },
     }
   }
 
-  // Recover visible prose from mixed/invalid output — no additional model call.
-  const fallbackStart = Date.now()
-  const recovered = sanitizeVisibleReply(raw.text)
-  fallbackMs = Date.now() - fallbackStart
+  logChat('structured_parse_failed', {
+    model,
+    rawLength: raw.text.length,
+    responseStatus: raw.responseStatus,
+    rawPreview: raw.text.slice(0, 120).replace(/\s+/g, ' '),
+  })
+
+  const plainStart = Date.now()
+  usedPlainTextFallback = true
+  model = retryModel
+  const plain = await invokeOpenAiResponsesText({
+    apiKey: opts.apiKey,
+    model,
+    instructions: opts.instructions,
+    messages: opts.messages,
+    maxOutputTokens: maxTokens,
+  })
+  plainTextFallbackMs = Date.now() - plainStart
+  modelCallMs += plainTextFallbackMs
+
+  fallbackMs = plainTextFallbackMs
+  const plainReply = sanitizeVisibleReply(plain.text)
 
   return {
-    reply: recovered || 'Sorry — I had trouble formatting that reply. Could you try again?',
+    reply: plainReply || 'Sorry — I had trouble responding. Please try again in a moment.',
     pendingWebSearchConfirmation: null,
     model,
     structured: false,
     retried,
+    usedPlainTextFallback,
     timings: {
       totalMs: Date.now() - startedAt,
       modelCallMs,
       structuredParseMs,
       retryMs,
       fallbackMs,
+      plainTextFallbackMs,
     },
   }
 }

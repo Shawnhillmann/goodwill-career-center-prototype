@@ -30,14 +30,33 @@ function extractOutputText(json: ResponsesCreateResult): string {
   const output = Array.isArray(json.output) ? json.output : []
   const texts: string[] = []
   for (const item of output) {
+    const itemType = (item as { type?: string }).type
+    if (itemType === 'reasoning') continue
+
     const content = Array.isArray((item as { content?: unknown }).content)
-      ? ((item as { content: Array<{ type?: string; text?: string }> }).content ?? [])
+      ? ((item as { content: Array<{ type?: string; text?: string; json?: unknown }> }).content ?? [])
       : []
+
     for (const c of content) {
+      if (typeof c?.text === 'string' && c.text.trim()) {
+        texts.push(c.text.trim())
+        continue
+      }
       if (c?.type === 'output_text' && typeof c?.text === 'string' && c.text.trim()) {
-        texts.push(c.text)
+        texts.push(c.text.trim())
+        continue
+      }
+      if (c?.json != null) {
+        try {
+          texts.push(JSON.stringify(c.json))
+        } catch {
+          // ignore
+        }
       }
     }
+
+    const itemText = (item as { text?: string }).text
+    if (typeof itemText === 'string' && itemText.trim()) texts.push(itemText.trim())
   }
   if (texts.length) return texts.join('\n').trim()
 

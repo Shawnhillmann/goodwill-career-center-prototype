@@ -5,6 +5,7 @@
 import assert from 'node:assert/strict'
 import {
   extractJsonObject,
+  extractVisibleReplyFromModelOutput,
   parseStructuredAdvisorJson,
   sanitizeVisibleReply,
 } from '../server/lib/advisorStructuredResponse.ts'
@@ -66,6 +67,21 @@ const messages = [{ role: 'user' as const, content: 'Help me find a job' }]
   const parsed = parseStructuredAdvisorJson(prose, messages)
   assert.equal(parsed?.reply, prose)
   assert.equal(parsed?.offerWebSearch, null)
+}
+
+// sanitizeVisibleReply extracts reply from pure JSON (fallback path bug fix)
+{
+  const json = '{"reply":"Hello!","offerWebSearch":null}'
+  assert.equal(sanitizeVisibleReply(json), 'Hello!')
+  const parsed = parseStructuredAdvisorJson(json, messages)
+  assert.equal(parsed?.reply, 'Hello!')
+}
+
+// extractVisibleReplyFromModelOutput handles pure JSON envelope
+{
+  const json = '{"reply":"Nice — happy to help.","offerWebSearch":null}'
+  const extracted = extractVisibleReplyFromModelOutput(json, messages)
+  assert.equal(extracted?.reply, 'Nice — happy to help.')
 }
 
 console.log('structured response tests passed')
