@@ -1,8 +1,9 @@
-export type SupportedLanguage = 'ar' | 'ht' | 'en' | 'pl' | 'ru' | 'es'
+export type SupportedLanguage = 'ar' | 'ht' | 'en' | 'it' | 'pl' | 'ru' | 'es'
 
 export const supportedLanguages: { code: SupportedLanguage; label: string; bcp47: string }[] = [
   { code: 'en', label: 'English', bcp47: 'en-US' },
   { code: 'es', label: 'Spanish', bcp47: 'es' },
+  { code: 'it', label: 'Italian', bcp47: 'it-IT' },
   { code: 'ht', label: 'Creole', bcp47: 'ht' },
   { code: 'pl', label: 'Polish', bcp47: 'pl-PL' },
   { code: 'ru', label: 'Russian', bcp47: 'ru-RU' },
@@ -26,6 +27,7 @@ type UiStrings = {
   siteSettings: string
   language: string
   readAloud: string
+  readAloudUnavailable: string
   heroTitle: string
   heroSubtitle: string
   quickActionsAria: string
@@ -67,6 +69,7 @@ const uiStrings: Record<SupportedLanguage, UiStrings> = {
     siteSettings: 'Site settings',
     language: 'Language',
     readAloud: 'Read aloud',
+    readAloudUnavailable: 'Read aloud is not available in Arabic.',
     heroTitle: 'Hi, I’m your AI Career Advisor',
     heroSubtitle: 'How can I help you reach your goals today?',
     quickActionsAria: 'Quick actions',
@@ -107,6 +110,7 @@ const uiStrings: Record<SupportedLanguage, UiStrings> = {
     siteSettings: 'Ajustes del sitio',
     language: 'Idioma',
     readAloud: 'Leer en voz alta',
+    readAloudUnavailable: 'La lectura en voz alta no está disponible en árabe.',
     heroTitle: 'Hola, soy tu asesor de carreras con IA',
     heroSubtitle: '¿Cómo puedo ayudarte a alcanzar tus metas hoy?',
     quickActionsAria: 'Acciones rápidas',
@@ -130,6 +134,47 @@ const uiStrings: Record<SupportedLanguage, UiStrings> = {
     footerAccessibility: 'Accesibilidad',
     resourceComingSoon: 'Próximamente',
   },
+  it: {
+    careerAdvisor: 'Consulente di carriera',
+    resources: 'Risorse',
+    liveSupport: 'Supporto dal vivo',
+    liveSupportTitle: 'Supporto dal vivo',
+    liveSupportVirtualSession: 'Prenota una sessione virtuale con uno dei nostri career coach (in arrivo)',
+    liveSupportCentersHeading: 'Visita o chiama uno dei nostri centri per la carriera',
+    liveSupportZipLabel: 'Il tuo CAP',
+    liveSupportZipPlaceholder: 'Inserisci il CAP',
+    liveSupportZipHint: 'Inserisci il CAP per vedere per primi i centri più vicini.',
+    liveSupportNearest: 'Più vicino a te',
+    backToChat: 'Torna alla chat',
+    resourcesTitle: 'Risorse per la carriera',
+    resourcesIntro: 'Video brevi, presentazioni e guide da usare con un coach o in autonomia.',
+    siteSettings: 'Impostazioni del sito',
+    language: 'Lingua',
+    readAloud: 'Leggi ad alta voce',
+    readAloudUnavailable: 'La lettura ad alta voce non è disponibile in arabo.',
+    heroTitle: 'Ciao, sono il tuo consulente di carriera AI',
+    heroSubtitle: 'Come posso aiutarti a raggiungere i tuoi obiettivi oggi?',
+    quickActionsAria: 'Azioni rapide',
+    conversationAria: 'Conversazione con il consulente di carriera AI',
+    messageLabel: 'Messaggio al tuo consulente di carriera',
+    voiceInputAria: 'Input vocale',
+    sendMessageAria: 'Invia messaggio',
+    advisorThinkingAria: 'Il consulente sta pensando',
+    advisorThinkingLabel: 'Sto pensando',
+    placeholder: 'Chiedi qualsiasi cosa…',
+    addFile: 'Aggiungi file',
+    removeAttachment: 'Rimuovi allegato',
+    uploadingFile: 'Caricamento…',
+    aiDisclaimer:
+      'Il consulente di carriera Goodwill usa l’IA e può commettere errori. Le offerte di lavoro e altre informazioni non sono verificate da Goodwill. Non condividere informazioni private e verifica le informazioni importanti.',
+    footerTagline: 'Goodwill aiuta le persone a sviluppare competenze, trovare lavoro e crescere professionalmente.',
+    footerLearnMore: 'Scopri di più su Goodwill',
+    footerCopyright: '© 2024 Goodwill Industries International, Inc.',
+    footerPrivacy: 'Informativa sulla privacy',
+    footerTerms: 'Termini di utilizzo',
+    footerAccessibility: 'Accessibilità',
+    resourceComingSoon: 'In arrivo',
+  },
   ht: {
     careerAdvisor: 'Konseye karyè',
     resources: 'Resous',
@@ -147,6 +192,7 @@ const uiStrings: Record<SupportedLanguage, UiStrings> = {
     siteSettings: 'Paramèt sit la',
     language: 'Lang',
     readAloud: 'Li byen fò',
+    readAloudUnavailable: 'Li byen fò pa disponib an arab.',
     heroTitle: 'Bonjou, mwen se konseye karyè ou ak IA',
     heroSubtitle: 'Kijan mwen ka ede ou atenn objektif ou jodi a?',
     quickActionsAria: 'Aksyon rapid',
@@ -187,6 +233,7 @@ const uiStrings: Record<SupportedLanguage, UiStrings> = {
     siteSettings: 'Ustawienia strony',
     language: 'Język',
     readAloud: 'Czytaj na głos',
+    readAloudUnavailable: 'Czytanie na głos nie jest dostępne w języku arabskim.',
     heroTitle: 'Cześć, jestem Twoim doradcą kariery AI',
     heroSubtitle: 'Jak mogę pomóc Ci osiągnąć Twoje cele dzisiaj?',
     quickActionsAria: 'Szybkie akcje',
@@ -227,6 +274,7 @@ const uiStrings: Record<SupportedLanguage, UiStrings> = {
     siteSettings: 'Настройки сайта',
     language: 'Язык',
     readAloud: 'Озвучивать текст',
+    readAloudUnavailable: 'Озвучивание недоступно для арабского языка.',
     heroTitle: 'Здравствуйте, я ваш AI‑консультант по карьере',
     heroSubtitle: 'Чем я могу помочь вам сегодня?',
     quickActionsAria: 'Быстрые действия',
@@ -267,6 +315,7 @@ const uiStrings: Record<SupportedLanguage, UiStrings> = {
     siteSettings: 'إعدادات الموقع',
     language: 'اللغة',
     readAloud: 'قراءة بصوت عالٍ',
+    readAloudUnavailable: 'القراءة بصوت عالٍ غير متاحة باللغة العربية.',
     heroTitle: 'مرحبًا، أنا مستشارك المهني بالذكاء الاصطناعي',
     heroSubtitle: 'كيف يمكنني مساعدتك في الوصول إلى أهدافك اليوم؟',
     quickActionsAria: 'إجراءات سريعة',
@@ -301,6 +350,7 @@ export function formatFileOnlyUserMessage(language: SupportedLanguage, fileName:
   const templates: Record<SupportedLanguage, string> = {
     en: '[Attached file: {name}]',
     es: '[Archivo adjunto: {name}]',
+    it: '[File allegato: {name}]',
     ht: '[Fichye ajoute: {name}]',
     pl: '[Załączony plik: {name}]',
     ru: '[Прикреплённый файл: {name}]',
@@ -315,6 +365,7 @@ export function formatFileUploadAcknowledgment(language: SupportedLanguage, file
   const templates: Record<SupportedLanguage, string> = {
     en: "I see you uploaded {name} — I'm ready to discuss it further with you when you are.",
     es: 'Veo que subiste {name} — estoy listo para hablar de ello contigo cuando quieras.',
+    it: 'Vedo che hai caricato {name} — sono pronto a parlarne con te quando vuoi.',
     ht: 'Mwen wè ou telechaje {name} — mwen pare pou nou diskite sou li lè w pare.',
     pl: 'Widzę, że przesłałeś(-aś) {name} — jestem gotowy(-a), aby omówić to z Tobą, kiedy będziesz gotowy(-a).',
     ru: 'Я вижу, что вы загрузили {name} — я готов обсудить это с вами, когда вы будете готовы.',
@@ -393,6 +444,38 @@ export const resourceExamples: Record<SupportedLanguage, ResourceExample[]> = {
       title: 'Tus primeros 90 días',
       description: 'Consejos para empezar bien en un nuevo puesto.',
       typeLabel: 'Guía',
+    },
+  ],
+  it: [
+    {
+      title: 'Basi del curriculum',
+      description: 'Una breve guida su struttura, parole chiave e cosa cercano i recruiter.',
+      typeLabel: 'Guida',
+    },
+    {
+      title: 'Pratica al colloquio',
+      description: 'Domande frequenti e come rispondere con sicurezza.',
+      typeLabel: 'Video',
+    },
+    {
+      title: 'Piano di ricerca lavoro',
+      description: 'Presentazione passo passo per organizzare la ricerca settimana per settimana.',
+      typeLabel: 'Presentazione',
+    },
+    {
+      title: 'Competenze sul lavoro',
+      description: 'Comunicazione, lavoro di squadra e problem solving.',
+      typeLabel: 'Video',
+    },
+    {
+      title: 'Centri per la carriera locali',
+      description: 'Come trovare coaching, workshop ed eventi di recruiting vicino a te.',
+      typeLabel: 'Guida',
+    },
+    {
+      title: 'I primi 90 giorni di lavoro',
+      description: 'Consigli per iniziare al meglio in un nuovo ruolo.',
+      typeLabel: 'Guida',
     },
   ],
   ht: [
@@ -524,65 +607,3 @@ export const resourceExamples: Record<SupportedLanguage, ResourceExample[]> = {
     },
   ],
 }
-
-export const quickActionLabels: Record<
-  SupportedLanguage,
-  {
-    job: string
-    careers: string
-    resume: string
-    interviews: string
-    skills: string
-    local: string
-  }
-> = {
-  en: {
-    job: 'Help me find a job',
-    careers: 'Explore career options',
-    resume: 'Write my resume / CV',
-    interviews: 'Practice interview questions',
-    skills: 'Help me build skills',
-    local: 'Help me find local resources',
-  },
-  es: {
-    job: 'Ayúdame a encontrar trabajo',
-    careers: 'Explorar opciones de carrera',
-    resume: 'Escribir mi currículum / CV',
-    interviews: 'Practicar preguntas de entrevista',
-    skills: 'Ayúdame a desarrollar habilidades',
-    local: 'Ayúdame a encontrar recursos locales',
-  },
-  ht: {
-    job: 'Ede m jwenn yon travay',
-    careers: 'Eksplore opsyon karyè',
-    resume: 'Ekri rezime / CV mwen',
-    interviews: 'Pratike kesyon entèvyou',
-    skills: 'Ede m devlope konpetans',
-    local: 'Ede m jwenn resous lokal',
-  },
-  pl: {
-    job: 'Pomóż mi znaleźć pracę',
-    careers: 'Poznaj opcje kariery',
-    resume: 'Napisz moje CV',
-    interviews: 'Ćwicz pytania rekrutacyjne',
-    skills: 'Pomóż mi rozwinąć umiejętności',
-    local: 'Pomóż mi znaleźć lokalne zasoby',
-  },
-  ru: {
-    job: 'Помогите мне найти работу',
-    careers: 'Изучить варианты карьеры',
-    resume: 'Написать резюме / CV',
-    interviews: 'Практика вопросов на интервью',
-    skills: 'Помогите развить навыки',
-    local: 'Помогите найти местные ресурсы',
-  },
-  ar: {
-    job: 'ساعدني في العثور على وظيفة',
-    careers: 'استكشاف خيارات مهنية',
-    resume: 'كتابة السيرة الذاتية / CV',
-    interviews: 'التدرّب على أسئلة المقابلة',
-    skills: 'ساعدني في بناء المهارات',
-    local: 'ساعدني في العثور على موارد محلية',
-  },
-}
-

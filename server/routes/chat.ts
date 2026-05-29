@@ -7,6 +7,7 @@ import { looksLikeUngroundedSearchClaim } from '../lib/hallucinationGuard.js'
 import { invokePlainAdvisorChat } from '../lib/plainChat.js'
 import { invokeOpenAiResponsesText, type ResponsesInvokeResult } from '../lib/openaiResponses.js'
 import { getOpenAiConfig, missingOpenAiEnv, selectChatModel } from '../lib/openaiModels.js'
+import { isQuickActionId } from '../lib/quickActions.js'
 
 type ChatRequestSource = 'typed' | 'quick_option'
 
@@ -15,6 +16,7 @@ type ChatRequestBody = {
   language: string
   uploadedDocumentText?: string
   source?: ChatRequestSource
+  quickAction?: string
 }
 
 function isNonEmptyString(v: unknown): v is string {
@@ -56,6 +58,7 @@ chatRouter.post('/', async (req, res) => {
   }
 
   const source = normalizeSource(body.source)
+  const quickAction = isQuickActionId(body.quickAction) ? body.quickAction : undefined
   const missing = missingOpenAiEnv()
   if (missing.length) {
     logChat('config_error', { requestId, missing: missing.join(',') })
@@ -83,6 +86,7 @@ chatRouter.post('/', async (req, res) => {
   logChat('chat_request', {
     requestId,
     source,
+    quickAction,
     messageCount: messages.length,
     lastUserLength: lastUser.length,
     lastUserPreview: lastUser.slice(0, 80),
@@ -159,6 +163,7 @@ chatRouter.post('/', async (req, res) => {
       requestId,
       path,
       source,
+      quickAction,
       totalMs: Date.now() - requestStarted,
       modelCallMs,
       fallbackUsed,

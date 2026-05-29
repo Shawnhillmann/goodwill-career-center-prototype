@@ -4,6 +4,7 @@ import { Footer } from './components/Footer'
 import { Header } from './components/Header'
 import './App.css'
 import { getUiStrings, supportedLanguages, type SupportedLanguage } from './uiCopy'
+import { isReadAloudSupported } from './lib/readAloudSupport'
 import { ResourcesPage } from './pages/ResourcesPage'
 import { LiveSupportPage } from './pages/LiveSupportPage'
 
@@ -21,6 +22,15 @@ export default function App() {
   useEffect(() => {
     window.localStorage.setItem('gw.language', language)
   }, [language])
+
+  useEffect(() => {
+    if (!isReadAloudSupported(language) && readAloudEnabled) {
+      setReadAloudEnabled(false)
+      if ('speechSynthesis' in window) {
+        window.speechSynthesis.cancel()
+      }
+    }
+  }, [language, readAloudEnabled])
 
   useEffect(() => {
     window.localStorage.setItem('gw.readAloud', String(readAloudEnabled))
@@ -46,7 +56,10 @@ export default function App() {
           <LiveSupportPage language={ language } />
         ) : (
           <>
-            <CareerAdvisorCard language={ language } readAloudEnabled={ readAloudEnabled } />
+            <CareerAdvisorCard
+              language={ language }
+              readAloudEnabled={ readAloudEnabled && isReadAloudSupported(language) }
+            />
             <p className="ai-disclaimer" role="note">
               { ui.aiDisclaimer }
             </p>

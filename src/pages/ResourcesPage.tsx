@@ -10,12 +10,19 @@ type ResourcesPageProps = {
 
 function resourceIcon(typeLabel: string) {
   const lower = typeLabel.toLowerCase()
-  if (lower.includes('video') || lower.includes('videyo') || lower.includes('wideo') || lower.includes('видео') || lower.includes('فيديو')) {
+  if (
+    lower.includes('video') ||
+    lower.includes('videyo') ||
+    lower.includes('wideo') ||
+    lower.includes('видео') ||
+    lower.includes('فيديو')
+  ) {
     return PlayCircle
   }
   if (
     lower.includes('slideshow') ||
     lower.includes('present') ||
+    lower.includes('presentazione') ||
     lower.includes('dyapo') ||
     lower.includes('презента') ||
     lower.includes('عرض')

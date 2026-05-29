@@ -450,6 +450,20 @@ button {
   white-space: nowrap;
 }
 
+.site-header__toggle--unavailable {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.site-header__toggle--unavailable:hover {
+  background: transparent;
+  color: var(--gw-muted);
+}
+
+.site-header__toggle-ui--off {
+  opacity: 0.75;
+}
+
 @media (max-width: 900px) {
   .site-header__inner {
     flex-wrap: wrap;

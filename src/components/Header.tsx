@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { ChevronDown } from 'lucide-react'
 import { GoodwillLogo } from './GoodwillLogo'
 import { getUiStrings, supportedLanguages, type SupportedLanguage } from '../uiCopy'
+import { isReadAloudSupported } from '../lib/readAloudSupport'
 
 type HeaderProps = {
   page: 'chat' | 'resources' | 'support'
@@ -87,6 +88,7 @@ function LanguageMenu({
 
 export function Header({ page, onNavigate, language, onLanguageChange, readAloudEnabled, onReadAloudChange }: HeaderProps) {
   const ui = getUiStrings(language)
+  const readAloudAvailable = isReadAloudSupported(language)
 
   return (
     <header className="site-header" dir="ltr">
@@ -129,15 +131,26 @@ export function Header({ page, onNavigate, language, onLanguageChange, readAloud
           <div className="site-header__controls" role="group" aria-label={ ui.siteSettings }>
             <LanguageMenu language={ language } onLanguageChange={ onLanguageChange } ariaLabel={ ui.language } />
 
-            <label className="site-header__toggle">
-              <input
-                type="checkbox"
-                checked={ readAloudEnabled }
-                onChange={ (e) => onReadAloudChange(e.target.checked) }
-              />
-              <span className="site-header__toggle-ui" aria-hidden />
-              <span className="site-header__toggle-text">{ ui.readAloud }</span>
-            </label>
+            {readAloudAvailable ? (
+              <label className="site-header__toggle">
+                <input
+                  type="checkbox"
+                  checked={ readAloudEnabled }
+                  onChange={ (e) => onReadAloudChange(e.target.checked) }
+                />
+                <span className="site-header__toggle-ui" aria-hidden />
+                <span className="site-header__toggle-text">{ ui.readAloud }</span>
+              </label>
+            ) : (
+              <span
+                className="site-header__toggle site-header__toggle--unavailable"
+                title={ ui.readAloudUnavailable }
+                aria-label={ ui.readAloudUnavailable }
+              >
+                <span className="site-header__toggle-ui site-header__toggle-ui--off" aria-hidden />
+                <span className="site-header__toggle-text">{ ui.readAloud }</span>
+              </span>
+            )}
           </div>
 
           <button

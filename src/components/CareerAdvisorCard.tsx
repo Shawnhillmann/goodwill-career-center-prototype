@@ -6,10 +6,11 @@ import {
   formatFileOnlyUserMessage,
   formatFileUploadAcknowledgment,
   getUiStrings,
-  quickActionLabels,
   supportedLanguages,
   type SupportedLanguage,
 } from '../uiCopy'
+import { isReadAloudSupported } from '../lib/readAloudSupport'
+import { listQuickActions, type QuickActionId } from '../quickActions'
 
 type ChatRole = 'user' | 'advisor'
 
@@ -67,33 +68,35 @@ export function CareerAdvisorCard({ language, readAloudEnabled }: CareerAdvisorC
   const [openDownloadsFor, setOpenDownloadsFor] = useState<Record<string, boolean>>({})
 
   const ui = useMemo(() => getUiStrings(language), [language])
+  const readAloudActive = readAloudEnabled && isReadAloudSupported(language)
   const speechLang = useMemo(
     () => supportedLanguages.find((l) => l.code === language)?.bcp47 ?? 'en-US',
     [language],
   )
 
   const quickActions = useMemo(() => {
-    const labels = quickActionLabels[language] ?? quickActionLabels.en
-    return [
-      { label: labels.job, icon: Search },
-      { label: labels.careers, icon: Compass },
-      { label: labels.resume, icon: FileText },
-      { label: labels.interviews, icon: MessageSquare },
-      { label: labels.skills, icon: GraduationCap },
-      { label: labels.local, icon: MapPin },
-    ]
+    const actions = listQuickActions(language)
+    const icons: Record<QuickActionId, typeof Search> = {
+      find_jobs: Search,
+      career_options: Compass,
+      resume_review: FileText,
+      interview_prep: MessageSquare,
+      build_skills: GraduationCap,
+      local_resources: MapPin,
+    }
+    return actions.map((action) => ({ ...action, icon: icons[action.id] }))
   }, [language])
 
   const speak = useCallback(
     (text: string) => {
-      if (!readAloudEnabled) return
+      if (!readAloudActive) return
       if (!('speechSynthesis' in window)) return
       const utterance = new SpeechSynthesisUtterance(text)
       utterance.lang = speechLang
       window.speechSynthesis.cancel()
       window.speechSynthesis.speak(utterance)
     },
-    [readAloudEnabled, speechLang],
+    [readAloudActive, speechLang],
   )
 
   const toApiMessages = useCallback(
@@ -114,10 +117,12 @@ export function CareerAdvisorCard({ language, readAloudEnabled }: CareerAdvisorC
         expectDocument?: boolean
         uploadedDocumentText?: string | null
         source?: 'typed' | 'quick_option'
+        quickAction?: QuickActionId
       },
     ) => {
       const docText = opts?.uploadedDocumentText ?? null
       const source = opts?.source ?? 'typed'
+      const quickAction = opts?.quickAction
       try {
         const resp = await fetch('/api/chat', {
           method: 'POST',
@@ -126,6 +131,7 @@ export function CareerAdvisorCard({ language, readAloudEnabled }: CareerAdvisorC
             messages: apiMessages,
             language,
             source,
+            ...(quickAction ? { quickAction } : {}),
             ...(docText ? { uploadedDocumentText: docText } : {}),
           }),
         })
@@ -187,7 +193,7 @@ export function CareerAdvisorCard({ language, readAloudEnabled }: CareerAdvisorC
   const sendUserMessage = useCallback(
     (
       input: string | { displayText: string; value: string; attachmentName?: string; documentText?: string | null },
-      opts?: { source?: 'typed' | 'quick_option' },
+      opts?: { source?: 'typed' | 'quick_option'; quickAction?: QuickActionId },
     ) => {
       const displayText = typeof input === 'string' ? input : input.displayText
       const value = typeof input === 'string' ? input : input.value
@@ -209,7 +215,7 @@ export function CareerAdvisorCard({ language, readAloudEnabled }: CareerAdvisorC
       const apiMessages = toApiMessages(messages, trimmedValue)
       setMessages((prev) => [...prev, userMessage])
       setAwaitingAdvisor(true)
-      queueAdvisorReply(apiMessages, { expectDocument, uploadedDocumentText: docText, source })
+      queueAdvisorReply(apiMessages, { expectDocument, uploadedDocumentText: docText, source, quickAction: opts?.quickAction })
     },
     [documentContext, messages, queueAdvisorReply, toApiMessages],
   )
@@ -219,10 +225,10 @@ export function CareerAdvisorCard({ language, readAloudEnabled }: CareerAdvisorC
   }, [messages, awaitingAdvisor])
 
   useEffect(() => {
-    if (readAloudEnabled) return
+    if (readAloudActive) return
     if (!('speechSynthesis' in window)) return
     window.speechSynthesis.cancel()
-  }, [readAloudEnabled])
+  }, [readAloudActive])
 
   // Setup voice recognition (Speech-to-text) if supported.
   useEffect(() => {
@@ -351,8 +357,13 @@ export function CareerAdvisorCard({ language, readAloudEnabled }: CareerAdvisorC
     inputRef.current?.focus()
   }
 
-  const handleQuickAction = (text: string) => {
-    sendUserMessage({ displayText: text, value: text }, { source: 'quick_option' })
+  const handleQuickAction = (action: QuickActionId) => {
+    const copy = quickActions.find((item) => item.id === action)
+    if (!copy) return
+    sendUserMessage(
+      { displayText: copy.label, value: copy.starter },
+      { source: 'quick_option', quickAction: action },
+    )
     inputRef.current?.focus()
   }
 
@@ -532,17 +543,18 @@ export function CareerAdvisorCard({ language, readAloudEnabled }: CareerAdvisorC
       <div className={ `advisor-card__dock${ chatEmpty ? '' : ' advisor-card__dock--chat-only' }` }>
         {chatEmpty ? (
           <div className="advisor-card__quick" role="group" aria-label={ ui.quickActionsAria }>
-            {quickActions.map(({ label, icon: Icon }) => (
+            {quickActions.map(({ id, label, ariaLabel, icon: Icon }) => (
               <button
-                key={ label }
+                key={ id }
                 type="button"
                 className="quick-pill"
-                onClick={ () => handleQuickAction(label) }
+                aria-label={ ariaLabel }
+                onClick={ () => handleQuickAction(id) }
               >
                 <span className="quick-pill__icon" aria-hidden>
                   <Icon size={ 20 } strokeWidth={ 1.75 } />
                 </span>
-                <span>{ label }</span>
+                <span aria-hidden>{ label }</span>
               </button>
             ))}
           </div>
