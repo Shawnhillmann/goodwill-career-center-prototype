@@ -26,7 +26,6 @@ type UiStrings = {
   quickActionsAria: string
   conversationAria: string
   messageLabel: string
-  addAria: string
   voiceInputAria: string
   sendMessageAria: string
   advisorThinkingAria: string
@@ -63,7 +62,6 @@ const uiStrings: Record<SupportedLanguage, UiStrings> = {
     quickActionsAria: 'Quick actions',
     conversationAria: 'AI Career Advisor conversation',
     messageLabel: 'Message to your career advisor',
-    addAria: 'Add',
     voiceInputAria: 'Voice input',
     sendMessageAria: 'Send message',
     advisorThinkingAria: 'Advisor is thinking',
@@ -99,7 +97,6 @@ const uiStrings: Record<SupportedLanguage, UiStrings> = {
     quickActionsAria: 'Acciones rápidas',
     conversationAria: 'Conversación con el asesor de carreras con IA',
     messageLabel: 'Mensaje para tu asesor de carreras',
-    addAria: 'Agregar',
     voiceInputAria: 'Entrada de voz',
     sendMessageAria: 'Enviar mensaje',
     advisorThinkingAria: 'El asesor está pensando',
@@ -135,7 +132,6 @@ const uiStrings: Record<SupportedLanguage, UiStrings> = {
     quickActionsAria: 'Aksyon rapid',
     conversationAria: 'Konvèsasyon ak konseye karyè IA',
     messageLabel: 'Mesaj pou konseye karyè ou',
-    addAria: 'Ajoute',
     voiceInputAria: 'Antre vwa',
     sendMessageAria: 'Voye mesaj',
     advisorThinkingAria: 'Konseye a ap reflechi',
@@ -171,7 +167,6 @@ const uiStrings: Record<SupportedLanguage, UiStrings> = {
     quickActionsAria: 'Szybkie akcje',
     conversationAria: 'Rozmowa z doradcą kariery AI',
     messageLabel: 'Wiadomość do Twojego doradcy kariery',
-    addAria: 'Dodaj',
     voiceInputAria: 'Wprowadzanie głosowe',
     sendMessageAria: 'Wyślij wiadomość',
     advisorThinkingAria: 'Doradca myśli',
@@ -207,7 +202,6 @@ const uiStrings: Record<SupportedLanguage, UiStrings> = {
     quickActionsAria: 'Быстрые действия',
     conversationAria: 'Диалог с AI‑консультантом по карьере',
     messageLabel: 'Сообщение вашему консультанту по карьере',
-    addAria: 'Добавить',
     voiceInputAria: 'Голосовой ввод',
     sendMessageAria: 'Отправить сообщение',
     advisorThinkingAria: 'Консультант думает',
@@ -243,7 +237,6 @@ const uiStrings: Record<SupportedLanguage, UiStrings> = {
     quickActionsAria: 'إجراءات سريعة',
     conversationAria: 'محادثة مع المستشار المهني بالذكاء الاصطناعي',
     messageLabel: 'رسالة إلى مستشارك المهني',
-    addAria: 'إضافة',
     voiceInputAria: 'إدخال صوتي',
     sendMessageAria: 'إرسال الرسالة',
     advisorThinkingAria: 'المستشار يفكر',

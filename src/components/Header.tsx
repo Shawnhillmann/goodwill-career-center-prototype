@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { ChevronDown, UserRound } from 'lucide-react'
+import { ChevronDown } from 'lucide-react'
 import { GoodwillLogo } from './GoodwillLogo'
 import { getUiStrings, supportedLanguages, type SupportedLanguage } from '../uiCopy'
 
@@ -147,14 +147,6 @@ export function Header({ page, onNavigate, language, onLanguageChange, readAloud
             onClick={ () => onNavigate('support') }
           >
             { ui.liveSupport }
-          </button>
-
-          <button type="button" className="site-header__user" aria-haspopup="menu">
-            <span className="site-header__avatar" aria-hidden>
-              <UserRound size={ 18 } strokeWidth={ 1.75 } />
-            </span>
-            <span className="site-header__name">Shawn</span>
-            <ChevronDown size={ 16 } strokeWidth={ 2 } aria-hidden />
           </button>
         </div>
         </div>

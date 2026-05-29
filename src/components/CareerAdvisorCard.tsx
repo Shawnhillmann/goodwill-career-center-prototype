@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
-import { Compass, Download, FileText, GraduationCap, ImagePlus, MapPin, MessageSquare, Mic, Plus, Search, Send, UserRound, X } from 'lucide-react'
+import { Compass, Download, FileText, GraduationCap, ImagePlus, MapPin, MessageSquare, Mic, Search, Send, UserRound, X } from 'lucide-react'
 import {
   formatFileOnlyUserMessage,
   formatFileUploadAcknowledgment,
@@ -578,9 +578,6 @@ export function CareerAdvisorCard({ language, readAloudEnabled }: CareerAdvisorC
               </div>
             ) : null}
             <div className="advisor-card__input-shell advisor-card__input-shell--integrated">
-              <button type="button" className="icon-btn icon-btn--infield" aria-label={ ui.addAria }>
-                <Plus size={ 20 } strokeWidth={ 2 } />
-              </button>
               <button
                 type="button"
                 className="text-btn text-btn--infield"

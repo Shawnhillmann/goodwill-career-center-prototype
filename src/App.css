@@ -450,51 +450,6 @@ button {
   white-space: nowrap;
 }
 
-.site-header__user {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.35rem;
-  min-height: var(--header-control-h);
-  padding: 0.35rem 0.45rem 0.35rem 0.35rem;
-  border: none;
-  background: transparent;
-  border-radius: var(--header-hit-radius);
-  cursor: pointer;
-  color: var(--gw-text);
-  font-size: 0.8125rem;
-  font-weight: 600;
-  line-height: 1.2;
-  flex-shrink: 0;
-  box-sizing: border-box;
-  font-family: inherit;
-  transition: background 0.15s ease, color 0.15s ease;
-}
-
-.site-header__user:hover {
-  background: var(--gw-blue-soft);
-  color: var(--gw-blue);
-}
-
-.site-header__user:focus-visible {
-  outline: 2px solid var(--gw-blue);
-  outline-offset: 2px;
-}
-
-.site-header__avatar {
-  width: 1.625rem;
-  height: 1.625rem;
-  border-radius: 50%;
-  background: var(--gw-blue-soft);
-  color: var(--gw-blue);
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.site-header__name {
-  padding-inline: 0.15rem;
-}
-
 @media (max-width: 900px) {
   .site-header__inner {
     flex-wrap: wrap;
