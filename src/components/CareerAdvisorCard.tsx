@@ -108,25 +108,36 @@ export function CareerAdvisorCard({ language, readAloudEnabled }: CareerAdvisorC
     [readAloudEnabled, speechLang],
   )
 
+  const toApiMessages = useCallback(
+    (thread: ChatMessage[], latestUserContent: string) => [
+      ...thread.map((m) => ({
+        role: (m.role === 'advisor' ? 'assistant' : 'user') as 'user' | 'assistant',
+        content: m.role === 'user' ? (m.value ?? m.text) : m.text,
+      })),
+      { role: 'user' as const, content: latestUserContent },
+    ],
+    [],
+  )
+
   const queueAdvisorReply = useCallback(
     async (
-      userTextValue: string,
-      opts?: { expectDocument?: boolean; uploadedDocumentText?: string | null },
+      apiMessages: Array<{ role: 'user' | 'assistant'; content: string }>,
+      opts?: {
+        expectDocument?: boolean
+        uploadedDocumentText?: string | null
+        source?: 'typed' | 'quick_option'
+      },
     ) => {
       const docText = opts?.uploadedDocumentText ?? null
+      const source = opts?.source ?? 'typed'
       try {
         const resp = await fetch('/api/chat', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            messages: [
-              ...messages.map((m) => ({
-                role: m.role === 'advisor' ? 'assistant' : 'user',
-                content: m.role === 'user' ? (m.value ?? m.text) : m.text,
-              })),
-              { role: 'user', content: userTextValue },
-            ],
+            messages: apiMessages,
             language,
+            source,
             ...(docText ? { uploadedDocumentText: docText } : {}),
           }),
         })
@@ -186,7 +197,7 @@ export function CareerAdvisorCard({ language, readAloudEnabled }: CareerAdvisorC
         ])
       }
     },
-    [language, messages, speak],
+    [language, speak],
   )
 
   const runWebSearch = useCallback(
@@ -259,7 +270,10 @@ export function CareerAdvisorCard({ language, readAloudEnabled }: CareerAdvisorC
   )
 
   const sendUserMessage = useCallback(
-    (input: string | { displayText: string; value: string; attachmentName?: string; documentText?: string | null }) => {
+    (
+      input: string | { displayText: string; value: string; attachmentName?: string; documentText?: string | null },
+      opts?: { source?: 'typed' | 'quick_option' },
+    ) => {
       const displayText = typeof input === 'string' ? input : input.displayText
       const value = typeof input === 'string' ? input : input.value
       const attachmentName = typeof input === 'string' ? undefined : input.attachmentName
@@ -269,16 +283,16 @@ export function CareerAdvisorCard({ language, readAloudEnabled }: CareerAdvisorC
       if (!trimmedValue && !attachmentName) return
       const expectDocument = isExplicitDocumentRequest(trimmedValue)
       const docText = documentText ?? documentContext
-      setMessages((prev) => [
-        ...prev,
-        {
-          id: nextId(),
-          role: 'user',
-          text: trimmedDisplay,
-          value: trimmedValue,
-          ...(attachmentName ? { attachmentName } : {}),
-        },
-      ])
+      const source = opts?.source ?? 'typed'
+      const userMessage: ChatMessage = {
+        id: nextId(),
+        role: 'user',
+        text: trimmedDisplay,
+        value: trimmedValue,
+        ...(attachmentName ? { attachmentName } : {}),
+      }
+      const apiMessages = toApiMessages(messages, trimmedValue)
+      setMessages((prev) => [...prev, userMessage])
       setAwaitingAdvisor(true)
       if (isExplicitSearchRequest(trimmedValue)) {
         const topic =
@@ -286,10 +300,10 @@ export function CareerAdvisorCard({ language, readAloudEnabled }: CareerAdvisorC
           'general'
         runWebSearch(topic, trimmedValue, docText)
       } else {
-        queueAdvisorReply(trimmedValue, { expectDocument, uploadedDocumentText: docText })
+        queueAdvisorReply(apiMessages, { expectDocument, uploadedDocumentText: docText, source })
       }
     },
-    [documentContext, messages, queueAdvisorReply, runWebSearch],
+    [documentContext, messages, queueAdvisorReply, runWebSearch, toApiMessages],
   )
 
   useEffect(() => {
@@ -430,9 +444,7 @@ export function CareerAdvisorCard({ language, readAloudEnabled }: CareerAdvisorC
   }
 
   const handleQuickAction = (text: string) => {
-    // Quick actions should behave exactly like a normal user message:
-    // send the same localized text to the model (no hardcoded English prompts).
-    sendUserMessage({ displayText: text, value: text })
+    sendUserMessage({ displayText: text, value: text }, { source: 'quick_option' })
     inputRef.current?.focus()
   }
 

@@ -5,18 +5,19 @@ import { getAiProvider, getOpenAiConfig } from '../lib/aiProvider.js'
 import { logChat } from '../lib/chatLog.js'
 import { getEnv, requireEnv } from '../lib/env.js'
 import { sendError } from '../lib/errors.js'
-import { looksLikePlaceholderTemplate } from '../lib/hallucinationGuard.js'
 import { invokePlainAdvisorChat } from '../lib/plainChat.js'
 import { invokeOpenAiResponsesText } from '../lib/openaiResponses.js'
 import { selectChatModel } from '../lib/openaiModels.js'
-import { matchStarterPrompt, STARTER_TURN_INSTRUCTIONS } from '../lib/starterPrompts.js'
 import { shouldShowSearchOnline, type WebSearchTopic } from '../lib/searchIntent.js'
 import { bedrockErrorHint, invokeBedrockChat } from '../lib/bedrockChat.js'
+
+type ChatRequestSource = 'typed' | 'quick_option'
 
 type ChatRequestBody = {
   messages: ChatMessage[]
   language: string
   uploadedDocumentText?: string
+  source?: ChatRequestSource
 }
 
 function isNonEmptyString(v: unknown): v is string {
@@ -39,13 +40,16 @@ function missingEnvForProvider(provider: 'openai' | 'bedrock') {
 }
 
 function isExplicitDocumentRequest(q: string, hasUploadedDocument: boolean): boolean {
-  if (matchStarterPrompt(q)) return false
   const s = q.toLowerCase()
   const doc = /\b(resume|résumé|cv|curriculum vitae|cover letter)\b/
   const action = /\b(write|draft|generate|create|format|rewrite|revise|tailor|update|improve|edit|fix)\b/
   if (!doc.test(s) || (!action.test(s) && !/\btailored\b/.test(s))) return false
   if (!hasUploadedDocument && /\b(write|create|draft|build)\s+(my\s+)?(resume|cv)\b/.test(s)) return false
   return true
+}
+
+function normalizeSource(source: unknown): ChatRequestSource {
+  return source === 'quick_option' ? 'quick_option' : 'typed'
 }
 
 export const chatRouter = express.Router()
@@ -57,6 +61,8 @@ chatRouter.post('/', async (req, res) => {
   if (!body || !Array.isArray(body.messages) || !isNonEmptyString(body.language)) {
     return sendError(res, 400, 'Invalid request. Expected { messages: [...], language: string }.')
   }
+
+  const source = normalizeSource(body.source)
 
   const aiProvider = getAiProvider()
   const missing = missingEnvForProvider(aiProvider)
@@ -75,18 +81,25 @@ chatRouter.post('/', async (req, res) => {
 
   const lastUser = [...messages].reverse().find((m) => m.role === 'user')?.content ?? ''
   const hasUploadedDocument = Boolean(body.uploadedDocumentText?.trim())
-  const starterKind = lastUser ? matchStarterPrompt(lastUser) : null
   const docOnly = Boolean(lastUser && isExplicitDocumentRequest(lastUser, hasUploadedDocument))
 
   const systemDocOnly = docOnly
     ? '\n\nIf the user requests a resume, CV, cover letter, or any written document, output ONLY the document text. Do NOT include any introduction, preface, commentary, or closing lines. Do not ask questions. The output must start immediately with the document content.'
     : ''
 
-  const instructions = starterKind
-    ? `${ buildSystemPrompt(body.language, body.uploadedDocumentText) + systemDocOnly }\n\n${ STARTER_TURN_INSTRUCTIONS[starterKind] }`
-    : buildSystemPrompt(body.language, body.uploadedDocumentText) + systemDocOnly
-
+  const instructions = buildSystemPrompt(body.language, body.uploadedDocumentText) + systemDocOnly
   const searchHint = shouldShowSearchOnline(messages)
+
+  logChat('chat_request', {
+    source,
+    messageCount: messages.length,
+    lastUserLength: lastUser.length,
+    lastUserPreview: lastUser.slice(0, 80),
+    uploadedDoc: hasUploadedDocument,
+    webSearch: false,
+    starterPrompt: false,
+    docOnly,
+  })
 
   if (aiProvider === 'openai') {
     const { apiKey } = getOpenAiConfig()
@@ -127,11 +140,8 @@ chatRouter.post('/', async (req, res) => {
       }
 
       if (!reply) {
+        logChat('chat_empty_reply', { source, model, fallbackUsed })
         return sendError(res, 502, 'The AI did not return a response. Please try again.')
-      }
-
-      if (looksLikePlaceholderTemplate(reply)) {
-        return sendError(res, 502, 'Unable to provide grounded results right now. Please try again.')
       }
 
       const serializeStarted = Date.now()
@@ -147,21 +157,26 @@ chatRouter.post('/', async (req, res) => {
       const serializeMs = Date.now() - serializeStarted
 
       logChat('request_timing', {
-        path: docOnly ? 'document' : starterKind ? 'starter' : 'chat',
+        path: docOnly ? 'document' : 'chat',
+        source,
         totalMs: Date.now() - requestStarted,
         modelCallMs,
         serializeMs,
         webSearch: false,
+        starterPrompt: false,
         fallbackUsed,
         model,
         uploadedDoc: hasUploadedDocument,
         messageCount: messages.length,
+        lastUserPreview: lastUser.slice(0, 80),
+        showSearchOnline: searchHint.show,
       })
 
       return res.json(payload)
     } catch (err: unknown) {
-      logChat('openai_error', { error: err instanceof Error ? err.message : String(err) })
-      return sendError(res, 502, 'Unable to get an AI response right now. Please try again in a moment.', err instanceof Error ? err.message : undefined)
+      const errorMessage = err instanceof Error ? err.message : String(err)
+      logChat('openai_error', { source, error: errorMessage, webSearch: false, starterPrompt: false })
+      return sendError(res, 502, 'Unable to get an AI response right now. Please try again in a moment.', errorMessage)
     }
   }
 
@@ -190,8 +205,10 @@ chatRouter.post('/', async (req, res) => {
 
     logChat('request_timing', {
       path: 'bedrock',
+      source,
       totalMs: Date.now() - requestStarted,
       webSearch: false,
+      starterPrompt: false,
       fallbackUsed: false,
       uploadedDoc: hasUploadedDocument,
     })
@@ -199,6 +216,7 @@ chatRouter.post('/', async (req, res) => {
     return res.json(payload)
   } catch (err: unknown) {
     const hint = bedrockErrorHint(err, modelId)
+    logChat('bedrock_error', { source, error: hint })
     return sendError(res, 502, 'Unable to get an AI response right now. Please try again in a moment.', hint)
   }
 })
