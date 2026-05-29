@@ -9,8 +9,7 @@
     "dev:all": "concurrently -k -n \"server,web\" -c \"cyan,magenta\" \"npm run server\" \"npm run dev\"",
     "build": "tsc && vite build && node scripts/build-vercel-api.mjs",
     "build:api": "node scripts/build-vercel-api.mjs",
-    "preview": "vite preview",
-    "test:structured": "tsx scripts/test-structured-response.ts"
+    "preview": "vite preview"
   },
   "devDependencies": {
     "@types/cors": "^2.8.19",

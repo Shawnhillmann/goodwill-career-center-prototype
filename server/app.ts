@@ -3,6 +3,7 @@ import express from 'express'
 import { getAiProvider, getOpenAiConfig } from './lib/aiProvider.js'
 import { getEnv } from './lib/env.js'
 import { chatRouter } from './routes/chat.js'
+import { searchRouter } from './routes/search.js'
 import { documentRouter } from './routes/document.js'
 
 export function createApp() {
@@ -47,6 +48,7 @@ export function createApp() {
   })
 
   app.use('/api/chat', chatRouter)
+  app.use('/api/search', searchRouter)
   // Lazy-load upload route so Node-only PDF parsing libs don't load for plain chat requests.
   // This prevents serverless startup crashes when optional PDF dependencies require DOM APIs.
   app.use('/api/upload', async (req, res, next) => {

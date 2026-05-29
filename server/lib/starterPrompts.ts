@@ -1,4 +1,4 @@
-/** Quick-action chip text (English and close translations) → conversational first turn, no web search. */
+/** Quick-action chip text → gentle first-turn guidance (plain chat, no web search). */
 
 export type StarterPromptKind = 'job' | 'careers' | 'resume' | 'local' | 'interviews' | 'skills'
 
@@ -22,15 +22,15 @@ export function matchStarterPrompt(q: string): StarterPromptKind | null {
 
 export const STARTER_TURN_INSTRUCTIONS: Record<StarterPromptKind, string> = {
   job:
-    'The user tapped a starter about finding a job. Reply warmly in under 55 words. Ask if they would like you to search current job postings online. Do not search or list jobs yet. If asking permission, set offerWebSearch in JSON (topic: jobs, querySoFar: concise query with any known role/location).',
+    'The user wants help finding a job. Reply warmly in under 55 words. Ask ONE helpful question (e.g. what kind of work interests them, or their city/state). Do not list jobs or claim to search the web.',
   careers:
-    'The user wants to explore career options. Reply warmly in under 55 words. Ask exactly ONE question about what they enjoy or are curious about (types of work or industries). Do not list jobs or search the web yet.',
+    'The user wants to explore career options. Reply warmly in under 55 words. Ask ONE question about what they enjoy or are curious about. Do not list jobs.',
   resume:
-    'The user wants help with a resume. Reply warmly in under 55 words. Ask exactly ONE question: do they have a resume to upload, or are they starting from scratch? Do not output a full resume yet unless they uploaded one.',
+    'The user wants help with a resume. Reply warmly in under 55 words. Ask ONE question: do they have a resume to upload, or are they starting from scratch?',
   local:
-    'The user wants local career resources. Reply warmly in under 55 words. Ask exactly ONE question for their city and state (or ZIP). Do not search the web yet. offerWebSearch must be null until you have a location and are asking permission.',
+    'The user wants local career resources. Reply warmly in under 55 words. Ask ONE question for their city and state (or ZIP). Do not list specific centers yet.',
   interviews:
-    'The user wants interview practice. Reply warmly in under 55 words. Ask exactly ONE question about what role or type of job they are interviewing for. Do not run a long interview prep lecture.',
+    'The user wants interview practice. Reply warmly in under 55 words. Ask ONE question about what role or type of job they are interviewing for.',
   skills:
-    'The user wants to build skills. Reply warmly in under 55 words. Ask exactly ONE question about what kind of work or skill area they are interested in. Do not list long training catalogs.',
+    'The user wants to build skills. Reply warmly in under 55 words. Ask ONE question about what kind of work or skill area interests them.',
 }
