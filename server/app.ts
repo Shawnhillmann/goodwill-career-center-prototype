@@ -28,7 +28,7 @@ export function createApp() {
         runtime: 'vercel-serverless',
         openaiConfigured: openaiReady,
         openaiModel: openaiReady ? openAi.model : null,
-        openaiNanoModel: openaiReady ? models.nano : null,
+        openaiNanoModel: openaiReady && models.nano ? models.nano : null,
         ...(!openaiReady
           ? {
               warning: 'OPENAI_API_KEY is not set. Add it in Vercel → Settings → Environment Variables.',

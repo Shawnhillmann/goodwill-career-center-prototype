@@ -1,11 +1,11 @@
 import express from 'express'
 
 import { buildSystemPrompt, type ChatMessage } from '../lib/advisorPrompt.js'
-import { logChat } from '../lib/chatLog.js'
+import { createRequestId, logChat, logChat502 } from '../lib/chatLog.js'
 import { sendError } from '../lib/errors.js'
 import { looksLikePlaceholderTemplate } from '../lib/hallucinationGuard.js'
 import { invokePlainAdvisorChat } from '../lib/plainChat.js'
-import { invokeOpenAiResponsesText } from '../lib/openaiResponses.js'
+import { invokeOpenAiResponsesText, type ResponsesInvokeResult } from '../lib/openaiResponses.js'
 import { getOpenAiConfig, missingOpenAiEnv, selectChatModel } from '../lib/openaiModels.js'
 import { buildConciseSearchQuery, shouldRunWebSearch } from '../lib/searchIntent.js'
 import { runLiveWebSearchPipeline } from '../lib/webSearchPipeline.js'
@@ -36,9 +36,20 @@ function normalizeSource(source: unknown): ChatRequestSource {
   return source === 'quick_option' ? 'quick_option' : 'typed'
 }
 
+function resultDiagnostics(result: ResponsesInvokeResult | null | undefined) {
+  return {
+    rawResponseLength: result?.rawBodyLength,
+    parsedResponseLength: result?.parsedTextLength,
+    responseStatus: result?.responseStatus,
+    outputItemTypes: result?.outputItemTypes,
+    incompleteReason: result?.incompleteReason,
+  }
+}
+
 export const chatRouter = express.Router()
 
 chatRouter.post('/', async (req, res) => {
+  const requestId = createRequestId()
   const requestStarted = Date.now()
   const body = req.body as ChatRequestBody
 
@@ -49,7 +60,7 @@ chatRouter.post('/', async (req, res) => {
   const source = normalizeSource(body.source)
   const missing = missingOpenAiEnv()
   if (missing.length) {
-    logChat('config_error', { missing: missing.join(',') })
+    logChat('config_error', { requestId, missing: missing.join(',') })
     return sendError(res, 500, 'Server is missing OpenAI configuration. Set OPENAI_API_KEY in your environment.', `Missing: ${ missing.join(', ') }`)
   }
 
@@ -73,6 +84,7 @@ chatRouter.post('/', async (req, res) => {
   const instructions = buildSystemPrompt(body.language, body.uploadedDocumentText) + systemDocOnly
 
   logChat('chat_request', {
+    requestId,
     source,
     messageCount: messages.length,
     lastUserLength: lastUser.length,
@@ -88,17 +100,18 @@ chatRouter.post('/', async (req, res) => {
     return sendError(res, 500, 'Server is missing OpenAI configuration. Set OPENAI_API_KEY in your environment.')
   }
 
-  try {
-    let reply = ''
-    let model = ''
-    let modelCallMs = 0
-    let fallbackUsed = false
-    let path: 'document' | 'search' | 'chat' = docOnly ? 'document' : 'chat'
+  let reply = ''
+  let model = ''
+  let modelCallMs = 0
+  let fallbackUsed = false
+  let path: 'document' | 'search' | 'chat' = docOnly ? 'document' : 'chat'
+  let lastModelResult: ResponsesInvokeResult | null = null
 
+  try {
     if (searchDecision.run && !docOnly) {
       const topic = searchDecision.topic
       const query = buildConciseSearchQuery(messages, topic)
-      logChat('route_search', { topic, queryLength: query.length, source })
+      logChat('route_search', { requestId, topic, queryLength: query.length, source })
 
       const searchStarted = Date.now()
       const pipeline = await runLiveWebSearchPipeline({
@@ -118,6 +131,7 @@ chatRouter.post('/', async (req, res) => {
         reply = pipeline.reply.trim()
       } else {
         logChat('search_fallback_to_chat', {
+          requestId,
           source,
           topic,
           ok: pipeline.ok,
@@ -135,9 +149,11 @@ chatRouter.post('/', async (req, res) => {
           model,
           instructions,
           messages,
-          maxOutputTokens: 700,
+          maxOutputTokens: 900,
+          reasoningEffort: 'minimal',
         })
         modelCallMs = Date.now() - docStarted
+        lastModelResult = docResult
         reply = docResult.text.trim()
       } else {
         const chat = await invokePlainAdvisorChat({
@@ -145,22 +161,38 @@ chatRouter.post('/', async (req, res) => {
           instructions,
           messages,
           hasUploadedDocument,
-          maxOutputTokens: hasUploadedDocument ? 600 : 320,
+          maxOutputTokens: hasUploadedDocument ? 800 : 600,
+          requestId,
         })
         reply = chat.reply
         model = chat.model
         modelCallMs = chat.modelCallMs
         fallbackUsed = chat.fallbackUsed
+        lastModelResult = chat.lastResult
         path = 'chat'
       }
     }
 
     if (!reply) {
-      logChat('chat_empty_reply', { source, model, fallbackUsed, path })
+      const diag = resultDiagnostics(lastModelResult)
+      logChat502({
+        requestId,
+        lastUserMessage: lastUser,
+        route: '/api/chat',
+        model,
+        searchTriggered: searchDecision.run,
+        uploadPresent: hasUploadedDocument,
+        retryUsed: fallbackUsed,
+        path,
+        messageCount: messages.length,
+        ...diag,
+      })
+      logChat('chat_empty_reply', { requestId, source, model, fallbackUsed, path, ...diag })
       return sendError(res, 502, 'The AI did not return a response. Please try again.')
     }
 
     logChat('request_timing', {
+      requestId,
       path,
       source,
       totalMs: Date.now() - requestStarted,
@@ -176,7 +208,21 @@ chatRouter.post('/', async (req, res) => {
     return res.json({ reply })
   } catch (err: unknown) {
     const errorMessage = err instanceof Error ? err.message : String(err)
-    logChat('openai_error', { source, error: errorMessage, webSearch: searchDecision.run })
+    const diag = resultDiagnostics(lastModelResult)
+    logChat502({
+      requestId,
+      lastUserMessage: lastUser,
+      route: '/api/chat',
+      model,
+      searchTriggered: searchDecision.run,
+      uploadPresent: hasUploadedDocument,
+      retryUsed: fallbackUsed,
+      exception: errorMessage,
+      path,
+      messageCount: messages.length,
+      ...diag,
+    })
+    logChat('openai_error', { requestId, source, error: errorMessage, webSearch: searchDecision.run })
     return sendError(res, 502, 'Unable to get an AI response right now. Please try again in a moment.', errorMessage)
   }
 })

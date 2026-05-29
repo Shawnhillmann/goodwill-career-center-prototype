@@ -1,6 +1,6 @@
 import { getEnv } from './env.js'
 
-export type ModelTier = 'nano' | 'mini' | 'search_fallback'
+export type ModelTier = 'search_fallback'
 
 export function getOpenAiConfig() {
   const env = getEnv()
@@ -13,7 +13,8 @@ export function getOpenAiConfig() {
 export function getOpenAiModelIds() {
   const env = getEnv()
   return {
-    nano: env.OPENAI_MODEL_NANO ?? 'gpt-5-nano',
+    /** Set only when OPENAI_MODEL_NANO is explicitly configured (opt-in). */
+    nano: env.OPENAI_MODEL_NANO,
     mini: env.OPENAI_MODEL ?? 'gpt-5-mini',
     searchFallback: env.OPENAI_MODEL_SEARCH_FALLBACK ?? 'gpt-5.5',
   }
@@ -28,8 +29,9 @@ export function selectChatModel(opts: {
   if (opts.isLiveWebSearch) {
     return opts.tier === 'search_fallback' ? models.searchFallback : models.mini
   }
-  if (opts.hasUploadedDocument) return models.mini
-  return models.nano
+  // Opt-in only: set OPENAI_MODEL_NANO in env to use nano for chat paths.
+  if (models.nano) return models.nano
+  return models.mini
 }
 
 export function missingOpenAiEnv(): string[] {

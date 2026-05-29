@@ -28,8 +28,9 @@ PORT=8787
 Optional model overrides:
 
 ```bash
-OPENAI_MODEL_NANO=gpt-5-nano
 OPENAI_MODEL_SEARCH_FALLBACK=gpt-5.5
+# Opt-in only — chat uses OPENAI_MODEL (gpt-5-mini) unless you set:
+# OPENAI_MODEL_NANO=gpt-5-nano
 ```
 
 Restart `npm run dev:all` after editing `.env` (env vars are loaded once at server startup).
@@ -89,7 +90,7 @@ Locally, the API runs as a separate Express process (`npm run server`); on Verce
 
 The advisor prioritizes, in order:
 
-1. **Conversation** — one OpenAI call (`gpt-5-nano` by default)
+1. **Conversation** — one OpenAI call (`gpt-5-mini` via `OPENAI_MODEL` by default)
 2. **Uploaded documents** — one OpenAI call with document context (`gpt-5-mini`)
 3. **Web search** — multi-stage pipeline only when current external information is required
 

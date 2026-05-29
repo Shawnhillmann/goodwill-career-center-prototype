@@ -126,7 +126,7 @@ function isGeneralCareerCoaching(q: string): boolean {
   if (needsLiveSignal) return false
 
   if (
-    /\b(help me find a job|find a job|what jobs fit|what careers?|what skills|how do i switch|prepare for an interview|interview prep|what should i put|resume tips|career options|career path|change careers|career change)\b/.test(
+    /\b(help me find a job|find a job|what jobs fit|what careers?|what skills|how do i switch|prepare for an interview|interview prep|what should i put|resume tips|career options|career path|change careers|career change|career advice|general advice|need advice|give me advice)\b/.test(
       s,
     )
   ) {

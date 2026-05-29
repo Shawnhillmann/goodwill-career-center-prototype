@@ -12,6 +12,7 @@ type ResponsesCreateResult = {
   output_text?: string
   output?: ResponsesOutputItem[]
   status?: string
+  incomplete_details?: { reason?: string }
 }
 
 type UrlCitation = { url: string; title?: string }
@@ -22,6 +23,22 @@ export type ResponsesInvokeResult = {
   linkCountInText: number
   latencyMs: number
   responseStatus?: string
+  rawBodyLength: number
+  parsedTextLength: number
+  outputItemTypes: string
+  incompleteReason?: string
+  hadMessageItem: boolean
+}
+
+function summarizeOutputTypes(json: ResponsesCreateResult): string {
+  const output = Array.isArray(json.output) ? json.output : []
+  if (!output.length) return 'none'
+  return output.map((item) => String((item as { type?: string }).type ?? 'unknown')).join(',')
+}
+
+function hadMessageOutput(json: ResponsesCreateResult): boolean {
+  const output = Array.isArray(json.output) ? json.output : []
+  return output.some((item) => (item as { type?: string }).type === 'message')
 }
 
 function extractOutputText(json: ResponsesCreateResult): string {
@@ -94,6 +111,8 @@ function extractUrlCitations(json: ResponsesCreateResult): UrlCitation[] {
 
 const OPENAI_RESPONSES_TIMEOUT_MS = 55_000
 
+export type ReasoningEffort = 'minimal' | 'low' | 'medium' | 'high'
+
 async function openAiResponsesFetch(body: Record<string, unknown>, apiKey: string): Promise<Response> {
   const controller = new AbortController()
   const timer = setTimeout(() => controller.abort(), OPENAI_RESPONSES_TIMEOUT_MS)
@@ -112,7 +131,7 @@ async function openAiResponsesFetch(body: Record<string, unknown>, apiKey: strin
   }
 }
 
-async function parseResponsesBody(response: Response): Promise<ResponsesCreateResult> {
+async function parseResponsesBody(response: Response): Promise<{ json: ResponsesCreateResult; rawBodyLength: number }> {
   const raw = await response.text()
   if (!response.ok) {
     let detail = raw
@@ -124,10 +143,15 @@ async function parseResponsesBody(response: Response): Promise<ResponsesCreateRe
     }
     throw new Error(`OpenAI Responses API error (${ response.status }): ${ detail }`)
   }
-  return JSON.parse(raw) as ResponsesCreateResult
+  return { json: JSON.parse(raw) as ResponsesCreateResult, rawBodyLength: raw.length }
 }
 
-function buildInvokeResult(json: ResponsesCreateResult, startedAt: number, text: string): ResponsesInvokeResult {
+function buildInvokeResult(
+  json: ResponsesCreateResult,
+  startedAt: number,
+  text: string,
+  rawBodyLength: number,
+): ResponsesInvokeResult {
   const citations = extractUrlCitations(json)
   const linkCountInText = extractHttpLinks(text).length
   return {
@@ -136,6 +160,11 @@ function buildInvokeResult(json: ResponsesCreateResult, startedAt: number, text:
     linkCountInText,
     latencyMs: Date.now() - startedAt,
     responseStatus: json.status,
+    rawBodyLength,
+    parsedTextLength: text.length,
+    outputItemTypes: summarizeOutputTypes(json),
+    incompleteReason: json.incomplete_details?.reason,
+    hadMessageItem: hadMessageOutput(json),
   }
 }
 
@@ -145,21 +174,25 @@ export async function invokeOpenAiResponsesText(params: {
   instructions: string
   messages: ChatMessage[]
   maxOutputTokens?: number
+  reasoningEffort?: ReasoningEffort
 }): Promise<ResponsesInvokeResult> {
   const startedAt = Date.now()
-  const response = await openAiResponsesFetch(
-    {
-      model: params.model,
-      instructions: params.instructions,
-      input: params.messages.map((m) => ({ role: m.role, content: m.content })),
-      max_output_tokens: params.maxOutputTokens ?? 500,
-    },
-    params.apiKey,
-  )
+  const body: Record<string, unknown> = {
+    model: params.model,
+    instructions: params.instructions,
+    input: params.messages.map((m) => ({ role: m.role, content: m.content })),
+    max_output_tokens: params.maxOutputTokens ?? 500,
+    text: { format: { type: 'text' } },
+  }
 
-  const json = await parseResponsesBody(response)
+  if (params.reasoningEffort) {
+    body.reasoning = { effort: params.reasoningEffort }
+  }
+
+  const response = await openAiResponsesFetch(body, params.apiKey)
+  const { json, rawBodyLength } = await parseResponsesBody(response)
   const text = extractOutputText(json)
-  return buildInvokeResult(json, startedAt, text)
+  return buildInvokeResult(json, startedAt, text, rawBodyLength)
 }
 
 export type WebSearchToolChoice = 'auto' | 'required'
@@ -186,11 +219,12 @@ export async function invokeOpenAiResponsesWebSearch(params: {
       tools: [{ type: 'web_search' }],
       tool_choice: toolChoice,
       max_output_tokens: params.maxOutputTokens ?? 480,
+      text: { format: { type: 'text' } },
     },
     params.apiKey,
   )
 
-  const json = await parseResponsesBody(response)
+  const { json, rawBodyLength } = await parseResponsesBody(response)
   let text = extractOutputText(json)
   const citations = extractUrlCitations(json)
 
@@ -202,5 +236,13 @@ export async function invokeOpenAiResponsesWebSearch(params: {
     text = `${ text }\n\nSources:\n${ sources }`.trim()
   }
 
-  return buildInvokeResult(json, startedAt, text)
+  return buildInvokeResult(json, startedAt, text, rawBodyLength)
+}
+
+export function isReasoningOnlyEmpty(result: ResponsesInvokeResult): boolean {
+  return (
+    !result.text.trim() &&
+    !result.hadMessageItem &&
+    (result.outputItemTypes.includes('reasoning') || result.incompleteReason === 'max_output_tokens')
+  )
 }
