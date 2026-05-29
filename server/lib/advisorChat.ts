@@ -2,17 +2,28 @@ import type { ChatMessage } from './advisorPrompt.js'
 import {
   advisorResponseJsonSchema,
   parseStructuredAdvisorJson,
+  sanitizeVisibleReply,
   STRUCTURED_ADVISOR_JSON_INSTRUCTIONS,
   type StructuredAdvisorResponse,
 } from './advisorStructuredResponse.js'
-import { invokeOpenAiResponsesStructuredJson, invokeOpenAiResponsesText } from './openaiResponses.js'
+import { invokeOpenAiResponsesStructuredJson } from './openaiResponses.js'
 import { selectChatModel } from './openaiModels.js'
+
+export type AdvisorChatTimings = {
+  totalMs: number
+  modelCallMs: number
+  structuredParseMs: number
+  retryMs: number
+  fallbackMs: number
+}
 
 export type AdvisorChatResult = {
   reply: string
   pendingWebSearchConfirmation: StructuredAdvisorResponse['offerWebSearch']
   model: string
   structured: boolean
+  timings: AdvisorChatTimings
+  retried: boolean
 }
 
 export async function invokeAdvisorChat(opts: {
@@ -22,10 +33,20 @@ export async function invokeAdvisorChat(opts: {
   hasUploadedDocument: boolean
   maxOutputTokens?: number
 }): Promise<AdvisorChatResult> {
+  const startedAt = Date.now()
   const primaryModel = selectChatModel({ hasUploadedDocument: opts.hasUploadedDocument, isLiveWebSearch: false })
   const retryModel = selectChatModel({ hasUploadedDocument: true, isLiveWebSearch: false })
   const structuredInstructions = `${ opts.instructions }\n\n${ STRUCTURED_ADVISOR_JSON_INSTRUCTIONS }`
+  const maxTokens =
+    opts.maxOutputTokens ?? (opts.hasUploadedDocument ? 600 : 280)
 
+  let modelCallMs = 0
+  let structuredParseMs = 0
+  let retryMs = 0
+  let fallbackMs = 0
+  let retried = false
+
+  const modelCallStart = Date.now()
   let model = primaryModel
   let raw = await invokeOpenAiResponsesStructuredJson({
     apiKey: opts.apiKey,
@@ -33,45 +54,69 @@ export async function invokeAdvisorChat(opts: {
     instructions: structuredInstructions,
     messages: opts.messages,
     jsonSchema: advisorResponseJsonSchema(),
-    maxOutputTokens: opts.maxOutputTokens ?? (opts.hasUploadedDocument ? 700 : 500),
+    maxOutputTokens: maxTokens,
   })
+  modelCallMs += Date.now() - modelCallStart
 
+  const parseStart = Date.now()
   let parsed = parseStructuredAdvisorJson(raw.text, opts.messages)
-  if (!parsed?.reply && primaryModel !== retryModel) {
+  structuredParseMs += Date.now() - parseStart
+
+  // Retry only when the model returned nothing — not on parse failure (avoid extra latency).
+  if (!raw.text.trim() && primaryModel !== retryModel) {
+    retried = true
     model = retryModel
+    const retryStart = Date.now()
     raw = await invokeOpenAiResponsesStructuredJson({
       apiKey: opts.apiKey,
       model,
       instructions: structuredInstructions,
       messages: opts.messages,
       jsonSchema: advisorResponseJsonSchema(),
-      maxOutputTokens: opts.maxOutputTokens ?? (opts.hasUploadedDocument ? 700 : 500),
+      maxOutputTokens: maxTokens,
     })
+    retryMs = Date.now() - retryStart
+    modelCallMs += retryMs
+
+    const retryParseStart = Date.now()
     parsed = parseStructuredAdvisorJson(raw.text, opts.messages)
+    structuredParseMs += Date.now() - retryParseStart
   }
 
   if (parsed?.reply) {
     return {
-      reply: parsed.reply,
+      reply: sanitizeVisibleReply(parsed.reply),
       pendingWebSearchConfirmation: parsed.offerWebSearch,
       model,
       structured: true,
+      retried,
+      timings: {
+        totalMs: Date.now() - startedAt,
+        modelCallMs,
+        structuredParseMs,
+        retryMs,
+        fallbackMs,
+      },
     }
   }
 
-  // Last resort: plain text (no pending — structured offer requires valid JSON)
-  const fallback = await invokeOpenAiResponsesText({
-    apiKey: opts.apiKey,
-    model: retryModel,
-    instructions: opts.instructions,
-    messages: opts.messages,
-    maxOutputTokens: opts.maxOutputTokens ?? (opts.hasUploadedDocument ? 700 : 400),
-  })
+  // Recover visible prose from mixed/invalid output — no additional model call.
+  const fallbackStart = Date.now()
+  const recovered = sanitizeVisibleReply(raw.text)
+  fallbackMs = Date.now() - fallbackStart
 
   return {
-    reply: fallback.text.trim(),
+    reply: recovered || 'Sorry — I had trouble formatting that reply. Could you try again?',
     pendingWebSearchConfirmation: null,
-    model: retryModel,
+    model,
     structured: false,
+    retried,
+    timings: {
+      totalMs: Date.now() - startedAt,
+      modelCallMs,
+      structuredParseMs,
+      retryMs,
+      fallbackMs,
+    },
   }
 }

@@ -38,16 +38,19 @@ function nextId(): string {
   return `${ Date.now() }-${ Math.random().toString(36).slice(2, 9) }`
 }
 
-function ThinkingIndicator({ label }: { label: string }) {
+function ThinkingIndicator({ label, text }: { label: string; text: string }) {
   return (
     <div className="thinking-row" aria-live="polite" aria-busy="true" aria-label={ label }>
       <span className="thinking-row__avatar" aria-hidden>
         <span className="thinking-row__g">g</span>
       </span>
       <div className="thinking-row__bubble">
-        <span className="thinking-dot" />
-        <span className="thinking-dot" />
-        <span className="thinking-dot" />
+        <span className="thinking-row__label">{ text }</span>
+        <span className="thinking-row__dots" aria-hidden>
+          <span className="thinking-dot" />
+          <span className="thinking-dot" />
+          <span className="thinking-dot" />
+        </span>
       </div>
     </div>
   )
@@ -564,7 +567,9 @@ export function CareerAdvisorCard({ language, readAloudEnabled }: CareerAdvisorC
                 </div>
               ),
             )}
-            {awaitingAdvisor ? <ThinkingIndicator label={ ui.advisorThinkingAria } /> : null}
+            {awaitingAdvisor ? (
+              <ThinkingIndicator label={ ui.advisorThinkingAria } text={ ui.advisorThinkingLabel } />
+            ) : null}
             <div ref={ chatEndRef } aria-hidden />
           </div>
         </div>

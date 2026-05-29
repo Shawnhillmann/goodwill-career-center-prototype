@@ -1,6 +1,7 @@
 import express from 'express'
 
 import { invokeAdvisorChat } from '../lib/advisorChat.js'
+import { sanitizeVisibleReply } from '../lib/advisorStructuredResponse.js'
 import { buildSystemPrompt, type ChatMessage } from '../lib/advisorPrompt.js'
 
 import { getAiProvider, getOpenAiConfig } from '../lib/aiProvider.js'
@@ -126,8 +127,9 @@ function blockIfHallucinated(reply: string, lastUser: string): string | null {
 
 
 function chatJsonResponse(reply: string, pending: PendingWebSearchConfirmation | null) {
+  const safeReply = sanitizeVisibleReply(reply)
   return {
-    reply,
+    reply: safeReply,
     ...(pending ? { pendingWebSearchConfirmation: pending } : {}),
   }
 }
@@ -195,6 +197,8 @@ chatRouter.post('/', async (req, res) => {
   const lastUser = [...messages].reverse().find((m) => m.role === 'user')?.content ?? ''
 
   const hasUploadedDocument = Boolean(body.uploadedDocumentText?.trim())
+
+  const routingStarted = Date.now()
 
   const searchAction = lastUser
     ? resolveWebSearchAction(messages, lastUser, {
@@ -274,6 +278,7 @@ chatRouter.post('/', async (req, res) => {
     try {
 
       if (searchAction.action === 'search' && isLiveSearchIntent(searchAction.intent)) {
+        const webSearchStarted = Date.now()
 
         logChat('route_live_search', {
 
@@ -282,6 +287,8 @@ chatRouter.post('/', async (req, res) => {
           queryLength: searchAction.intent.query.length,
 
           confirmedViaButton: Boolean(body.confirmWebSearch),
+
+          routingMs: webSearchStarted - routingStarted,
 
         })
 
@@ -298,6 +305,8 @@ chatRouter.post('/', async (req, res) => {
           intent: searchAction.intent,
 
         })
+
+        const webSearchMs = Date.now() - webSearchStarted
 
 
 
@@ -317,7 +326,19 @@ chatRouter.post('/', async (req, res) => {
 
         }
 
+        const serializeStarted = Date.now()
+        const payload = { reply: sanitizeVisibleReply(pipeline.reply) }
+        const serializeMs = Date.now() - serializeStarted
 
+        logChat('request_timing', {
+          path: 'live_web_search',
+          totalMs: Date.now() - requestStarted,
+          routingMs: webSearchStarted - routingStarted,
+          webSearchMs,
+          serializeMs,
+          stage: pipeline.stage,
+          model: pipeline.model,
+        })
 
         logChat('request_complete', {
 
@@ -335,13 +356,13 @@ chatRouter.post('/', async (req, res) => {
 
 
 
-        return res.json({ reply: pipeline.reply })
-
+        return res.json(payload)
       }
 
       if (docOnly) {
         const docModel = selectChatModel({ hasUploadedDocument: true, isLiveWebSearch: false })
-        logChat('route_document', { model: docModel })
+        const docStarted = Date.now()
+        logChat('route_document', { model: docModel, routingMs: docStarted - routingStarted })
         const docResult = await invokeOpenAiResponsesText({
           apiKey,
           model: docModel,
@@ -349,29 +370,42 @@ chatRouter.post('/', async (req, res) => {
           messages,
           maxOutputTokens: 700,
         })
+        const modelCallMs = Date.now() - docStarted
         const docReply = docResult.text.trim()
         if (!docReply) {
           return sendError(res, 502, 'The AI did not return a response. Please try again.')
         }
+        const serializeStarted = Date.now()
+        const payload = { reply: docReply }
+        const serializeMs = Date.now() - serializeStarted
+        logChat('request_timing', {
+          path: 'document',
+          totalMs: Date.now() - requestStarted,
+          routingMs: docStarted - routingStarted,
+          modelCallMs,
+          serializeMs,
+          model: docModel,
+        })
         logChat('request_complete', {
           path: 'document',
           model: docModel,
           latencyMs: Date.now() - requestStarted,
           replyLength: docReply.length,
         })
-        return res.json({ reply: docReply })
+        return res.json(payload)
       }
 
       const instructions = starterKind
         ? `${ system }\n\n${ STARTER_TURN_INSTRUCTIONS[starterKind] }`
         : system
 
+      const chatStarted = Date.now()
       const chatResult = await invokeAdvisorChat({
         apiKey,
         instructions,
         messages,
         hasUploadedDocument,
-        maxOutputTokens: hasUploadedDocument ? 700 : 500,
+        maxOutputTokens: hasUploadedDocument ? 600 : 280,
       })
 
       if (!chatResult.reply) {
@@ -383,17 +417,40 @@ chatRouter.post('/', async (req, res) => {
         return sendError(res, 502, blocked, 'chat_hallucination_guard')
       }
 
+      const serializeStarted = Date.now()
+      const payload = chatJsonResponse(chatResult.reply, chatResult.pendingWebSearchConfirmation)
+      const serializeMs = Date.now() - serializeStarted
+
+      logChat('request_timing', {
+        path: starterKind ? 'starter' : 'chat',
+        totalMs: Date.now() - requestStarted,
+        routingMs: chatStarted - routingStarted,
+        modelCallMs: chatResult.timings.modelCallMs,
+        structuredParseMs: chatResult.timings.structuredParseMs,
+        retryMs: chatResult.timings.retryMs,
+        fallbackMs: chatResult.timings.fallbackMs,
+        advisorChatMs: chatResult.timings.totalMs,
+        serializeMs,
+        model: chatResult.model,
+        structured: chatResult.structured,
+        retried: chatResult.retried,
+        messageCount: messages.length,
+        hasUploadedDocument,
+        webSearch: false,
+      })
+
       logChat('request_complete', {
         path: starterKind ? 'starter' : 'chat',
         starterKind: starterKind ?? undefined,
         model: chatResult.model,
         structured: chatResult.structured,
+        retried: chatResult.retried,
         latencyMs: Date.now() - requestStarted,
         replyLength: chatResult.reply.length,
         hasPendingSearch: Boolean(chatResult.pendingWebSearchConfirmation),
       })
 
-      return res.json(chatJsonResponse(chatResult.reply, chatResult.pendingWebSearchConfirmation))
+      return res.json(payload)
 
     } catch (err: unknown) {
 

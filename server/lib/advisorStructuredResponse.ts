@@ -8,21 +8,15 @@ export type StructuredAdvisorResponse = {
 }
 
 export const STRUCTURED_ADVISOR_JSON_INSTRUCTIONS = `
-RESPONSE FORMAT (required):
-Return JSON only — no markdown fences, no extra keys.
-{
-  "reply": "<warm user-facing message in plain text>",
-  "offerWebSearch": null OR {
-    "topic": "jobs" | "local_resources" | "events" | "general",
-    "querySoFar": "<concise search query, max 12 words>"
-  }
-}
+RESPONSE FORMAT (critical):
+- Output ONE JSON object only. No markdown fences. No prose before or after the JSON.
+- ALL user-visible words go in the "reply" string field only.
+- Never put JSON, field names, offerWebSearch, topic, or querySoFar inside reply.
 
 offerWebSearch rules:
-- Set to an object ONLY when your reply asks the user for permission to search the web for live/current results.
-- Set to null when gathering info (location, role, preferences), coaching, resume help, or any non-search reply.
-- querySoFar must be a short search-engine query: topic keywords + role (if known) + city/state or ZIP. Never paste conversation sentences.
-- Examples: "retail jobs Middletown CT 06457", "job fairs Hartford CT", "Goodwill career center Middletown CT"
+- Set to an object ONLY when reply asks permission to search the web for live/current results.
+- Set to null when gathering info, coaching, or resume help.
+- querySoFar: short search query (max 12 words) — topic + role + city/state or ZIP.
 `.trim()
 
 const ADVISOR_RESPONSE_SCHEMA = {
@@ -62,8 +56,70 @@ export function advisorResponseJsonSchema() {
 
 const VALID_TOPICS = new Set<WebSearchTopic>(['jobs', 'local_resources', 'events', 'general'])
 
+const JSON_LEAK_MARKERS =
+  /\{[\s\S]*"offerWebSearch"|\bofferWebSearch\b\s*[:{]|\b"?(reply|topic|querySoFar)"?\s*:\s*["{]/i
+
 function isValidTopic(v: unknown): v is WebSearchTopic {
   return typeof v === 'string' && VALID_TOPICS.has(v as WebSearchTopic)
+}
+
+function safeJsonParse(text: string): unknown | null {
+  try {
+    return JSON.parse(text)
+  } catch {
+    return null
+  }
+}
+
+/** Extract the first balanced `{ ... }` object from mixed model output. */
+export function extractJsonObject(text: string): string | null {
+  const fenced = text.match(/```(?:json)?\s*([\s\S]*?)```/i)
+  if (fenced?.[1]?.trim()) return fenced[1].trim()
+
+  const start = text.indexOf('{')
+  if (start < 0) return null
+
+  let depth = 0
+  let inString = false
+  let escape = false
+
+  for (let i = start; i < text.length; i++) {
+    const ch = text[i]
+    if (inString) {
+      if (escape) escape = false
+      else if (ch === '\\') escape = true
+      else if (ch === '"') inString = false
+      continue
+    }
+    if (ch === '"') {
+      inString = true
+      continue
+    }
+    if (ch === '{') depth++
+    else if (ch === '}') {
+      depth--
+      if (depth === 0) return text.slice(start, i + 1)
+    }
+  }
+  return null
+}
+
+/** Remove leaked JSON / schema fragments from user-visible text. */
+export function sanitizeVisibleReply(text: string): string {
+  let s = text.trim()
+  if (!s) return ''
+
+  const jsonStart = s.search(/\n?\s*\{/)
+  if (jsonStart >= 0 && JSON_LEAK_MARKERS.test(s.slice(jsonStart))) {
+    s = s.slice(0, jsonStart).trim()
+  }
+
+  s = s.replace(/\n?\s*\{[\s\S]*"offerWebSearch"[\s\S]*$/i, '').trim()
+  s = s.replace(/\bofferWebSearch\b\s*:\s*\{[\s\S]*?\}\s*,?\s*/gi, '').trim()
+  s = s.replace(/^[\s,]*"?(reply|offerWebSearch|topic|querySoFar)"?\s*:\s*/gi, '').trim()
+  s = s.replace(/^["']|["']$/g, '').trim()
+
+  return s.trim()
 }
 
 export function normalizeStructuredAdvisorResponse(
@@ -72,7 +128,8 @@ export function normalizeStructuredAdvisorResponse(
 ): StructuredAdvisorResponse | null {
   if (!raw || typeof raw !== 'object') return null
   const obj = raw as Record<string, unknown>
-  const reply = typeof obj.reply === 'string' ? obj.reply.trim() : ''
+  const replyRaw = typeof obj.reply === 'string' ? obj.reply.trim() : ''
+  const reply = sanitizeVisibleReply(replyRaw)
   if (!reply) return null
 
   let offerWebSearch: PendingWebSearchConfirmation | null = null
@@ -107,9 +164,34 @@ export function normalizePendingOffer(
 export function parseStructuredAdvisorJson(text: string, messages: ChatMessage[]): StructuredAdvisorResponse | null {
   const trimmed = text.trim()
   if (!trimmed) return null
-  try {
-    return normalizeStructuredAdvisorResponse(JSON.parse(trimmed), messages)
-  } catch {
-    return null
+
+  const direct = safeJsonParse(trimmed)
+  if (direct) {
+    const normalized = normalizeStructuredAdvisorResponse(direct, messages)
+    if (normalized) return normalized
   }
+
+  const jsonBlob = extractJsonObject(trimmed)
+  if (jsonBlob) {
+    const parsed = safeJsonParse(jsonBlob)
+    const proseBefore = trimmed.slice(0, trimmed.indexOf(jsonBlob)).trim()
+    if (parsed) {
+      const normalized = normalizeStructuredAdvisorResponse(parsed, messages)
+      if (normalized) {
+        const reply = sanitizeVisibleReply(proseBefore || normalized.reply)
+        if (!reply) return null
+        return { reply, offerWebSearch: normalized.offerWebSearch }
+      }
+    }
+    if (proseBefore) {
+      return { reply: sanitizeVisibleReply(proseBefore), offerWebSearch: null }
+    }
+  }
+
+  const sanitized = sanitizeVisibleReply(trimmed)
+  if (sanitized && !JSON_LEAK_MARKERS.test(sanitized)) {
+    return { reply: sanitized, offerWebSearch: null }
+  }
+
+  return null
 }

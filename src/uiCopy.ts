@@ -32,6 +32,7 @@ type UiStrings = {
   voiceInputAria: string
   sendMessageAria: string
   advisorThinkingAria: string
+  advisorThinkingLabel: string
   placeholder: string
   addFile: string
   removeAttachment: string
@@ -70,6 +71,7 @@ const uiStrings: Record<SupportedLanguage, UiStrings> = {
     voiceInputAria: 'Voice input',
     sendMessageAria: 'Send message',
     advisorThinkingAria: 'Advisor is thinking',
+    advisorThinkingLabel: 'Thinking',
     placeholder: 'Ask anything…',
     addFile: 'Add file',
     removeAttachment: 'Remove attachment',
@@ -107,6 +109,7 @@ const uiStrings: Record<SupportedLanguage, UiStrings> = {
     voiceInputAria: 'Entrada de voz',
     sendMessageAria: 'Enviar mensaje',
     advisorThinkingAria: 'El asesor está pensando',
+    advisorThinkingLabel: 'Pensando',
     placeholder: 'Escribe tu mensaje…',
     addFile: 'Agregar archivo',
     removeAttachment: 'Quitar archivo adjunto',
@@ -144,6 +147,7 @@ const uiStrings: Record<SupportedLanguage, UiStrings> = {
     voiceInputAria: 'Antre vwa',
     sendMessageAria: 'Voye mesaj',
     advisorThinkingAria: 'Konseye a ap reflechi',
+    advisorThinkingLabel: 'Ap reflechi',
     placeholder: 'Ekri mesaj ou…',
     addFile: 'Ajoute fichye',
     removeAttachment: 'Retire fichye a',
@@ -181,6 +185,7 @@ const uiStrings: Record<SupportedLanguage, UiStrings> = {
     voiceInputAria: 'Wprowadzanie głosowe',
     sendMessageAria: 'Wyślij wiadomość',
     advisorThinkingAria: 'Doradca myśli',
+    advisorThinkingLabel: 'Myślę',
     placeholder: 'Napisz wiadomość…',
     addFile: 'Dodaj plik',
     removeAttachment: 'Usuń załącznik',
@@ -218,6 +223,7 @@ const uiStrings: Record<SupportedLanguage, UiStrings> = {
     voiceInputAria: 'Голосовой ввод',
     sendMessageAria: 'Отправить сообщение',
     advisorThinkingAria: 'Консультант думает',
+    advisorThinkingLabel: 'Думаю',
     placeholder: 'Введите сообщение…',
     addFile: 'Добавить файл',
     removeAttachment: 'Удалить вложение',
@@ -255,6 +261,7 @@ const uiStrings: Record<SupportedLanguage, UiStrings> = {
     voiceInputAria: 'إدخال صوتي',
     sendMessageAria: 'إرسال الرسالة',
     advisorThinkingAria: 'المستشار يفكر',
+    advisorThinkingLabel: 'أفكر',
     placeholder: 'اكتب رسالتك…',
     addFile: 'إضافة ملف',
     removeAttachment: 'إزالة المرفق',

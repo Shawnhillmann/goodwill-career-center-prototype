@@ -1560,13 +1560,25 @@ button {
 .thinking-row__bubble {
   display: inline-flex;
   align-items: center;
-  gap: 0.3rem;
+  gap: 0.45rem;
   padding: 0.7rem 1rem 0.65rem;
   border-radius: 1rem;
   border-bottom-left-radius: 0.35rem;
   background: var(--gw-advisor-bubble);
   border: 1px solid #e2e8f0;
   min-width: 3.5rem;
+}
+
+.thinking-row__label {
+  color: #64748b;
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.thinking-row__dots {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
 }
 
 .thinking-dot {
