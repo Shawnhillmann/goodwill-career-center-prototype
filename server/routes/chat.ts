@@ -1,15 +1,14 @@
 import express from 'express'
 
 import { buildSystemPrompt, type ChatMessage } from '../lib/advisorPrompt.js'
-import { getAiProvider, getOpenAiConfig } from '../lib/aiProvider.js'
 import { logChat } from '../lib/chatLog.js'
-import { getEnv, requireEnv } from '../lib/env.js'
 import { sendError } from '../lib/errors.js'
+import { looksLikePlaceholderTemplate } from '../lib/hallucinationGuard.js'
 import { invokePlainAdvisorChat } from '../lib/plainChat.js'
 import { invokeOpenAiResponsesText } from '../lib/openaiResponses.js'
-import { selectChatModel } from '../lib/openaiModels.js'
-import { shouldShowSearchOnline, type WebSearchTopic } from '../lib/searchIntent.js'
-import { bedrockErrorHint, invokeBedrockChat } from '../lib/bedrockChat.js'
+import { getOpenAiConfig, missingOpenAiEnv, selectChatModel } from '../lib/openaiModels.js'
+import { buildConciseSearchQuery, shouldRunWebSearch } from '../lib/searchIntent.js'
+import { runLiveWebSearchPipeline } from '../lib/webSearchPipeline.js'
 
 type ChatRequestSource = 'typed' | 'quick_option'
 
@@ -22,21 +21,6 @@ type ChatRequestBody = {
 
 function isNonEmptyString(v: unknown): v is string {
   return typeof v === 'string' && v.trim().length > 0
-}
-
-function missingEnvForProvider(provider: 'openai' | 'bedrock') {
-  const env = getEnv()
-  if (provider === 'openai') {
-    const missing: string[] = []
-    if (!env.OPENAI_API_KEY) missing.push('OPENAI_API_KEY')
-    return missing
-  }
-  const missing: string[] = []
-  if (!env.AWS_REGION) missing.push('AWS_REGION')
-  if (!env.BEDROCK_MODEL_ID) missing.push('BEDROCK_MODEL_ID')
-  if (!env.AWS_ACCESS_KEY_ID) missing.push('AWS_ACCESS_KEY_ID')
-  if (!env.AWS_SECRET_ACCESS_KEY) missing.push('AWS_SECRET_ACCESS_KEY')
-  return missing
 }
 
 function isExplicitDocumentRequest(q: string, hasUploadedDocument: boolean): boolean {
@@ -63,12 +47,10 @@ chatRouter.post('/', async (req, res) => {
   }
 
   const source = normalizeSource(body.source)
-
-  const aiProvider = getAiProvider()
-  const missing = missingEnvForProvider(aiProvider)
+  const missing = missingOpenAiEnv()
   if (missing.length) {
-    logChat('config_error', { provider: aiProvider, missing: missing.join(',') })
-    return res.status(500).json({ error: 'Missing required environment variable', missing, provider: aiProvider })
+    logChat('config_error', { missing: missing.join(',') })
+    return sendError(res, 500, 'Server is missing OpenAI configuration. Set OPENAI_API_KEY in your environment.', `Missing: ${ missing.join(', ') }`)
   }
 
   const messages = body.messages
@@ -82,13 +64,13 @@ chatRouter.post('/', async (req, res) => {
   const lastUser = [...messages].reverse().find((m) => m.role === 'user')?.content ?? ''
   const hasUploadedDocument = Boolean(body.uploadedDocumentText?.trim())
   const docOnly = Boolean(lastUser && isExplicitDocumentRequest(lastUser, hasUploadedDocument))
+  const searchDecision = shouldRunWebSearch(messages, hasUploadedDocument)
 
   const systemDocOnly = docOnly
     ? '\n\nIf the user requests a resume, CV, cover letter, or any written document, output ONLY the document text. Do NOT include any introduction, preface, commentary, or closing lines. Do not ask questions. The output must start immediately with the document content.'
     : ''
 
   const instructions = buildSystemPrompt(body.language, body.uploadedDocumentText) + systemDocOnly
-  const searchHint = shouldShowSearchOnline(messages)
 
   logChat('chat_request', {
     source,
@@ -96,23 +78,55 @@ chatRouter.post('/', async (req, res) => {
     lastUserLength: lastUser.length,
     lastUserPreview: lastUser.slice(0, 80),
     uploadedDoc: hasUploadedDocument,
-    webSearch: false,
-    starterPrompt: false,
+    webSearch: searchDecision.run,
+    searchTopic: searchDecision.run ? searchDecision.topic : undefined,
     docOnly,
   })
 
-  if (aiProvider === 'openai') {
-    const { apiKey } = getOpenAiConfig()
-    if (!apiKey) {
-      return sendError(res, 500, 'Server is missing OpenAI configuration. Set OPENAI_API_KEY in your .env when AI_PROVIDER=openai.')
+  const { apiKey } = getOpenAiConfig()
+  if (!apiKey) {
+    return sendError(res, 500, 'Server is missing OpenAI configuration. Set OPENAI_API_KEY in your environment.')
+  }
+
+  try {
+    let reply = ''
+    let model = ''
+    let modelCallMs = 0
+    let fallbackUsed = false
+    let path: 'document' | 'search' | 'chat' = docOnly ? 'document' : 'chat'
+
+    if (searchDecision.run && !docOnly) {
+      const topic = searchDecision.topic
+      const query = buildConciseSearchQuery(messages, topic)
+      logChat('route_search', { topic, queryLength: query.length, source })
+
+      const searchStarted = Date.now()
+      const pipeline = await runLiveWebSearchPipeline({
+        apiKey,
+        baseInstructions: instructions,
+        messages,
+        intent: { kind: topic, query },
+      })
+      modelCallMs = Date.now() - searchStarted
+      if (pipeline.ok) {
+        model = pipeline.model
+        fallbackUsed = pipeline.stage !== 'A_mini_auto'
+      }
+
+      if (pipeline.ok && !looksLikePlaceholderTemplate(pipeline.reply)) {
+        path = 'search'
+        reply = pipeline.reply.trim()
+      } else {
+        logChat('search_fallback_to_chat', {
+          source,
+          topic,
+          ok: pipeline.ok,
+          stage: pipeline.ok ? pipeline.stage : undefined,
+        })
+      }
     }
 
-    try {
-      let reply = ''
-      let model = ''
-      let modelCallMs = 0
-      let fallbackUsed = false
-
+    if (!reply) {
       if (docOnly) {
         model = selectChatModel({ hasUploadedDocument: true, isLiveWebSearch: false })
         const docStarted = Date.now()
@@ -137,86 +151,32 @@ chatRouter.post('/', async (req, res) => {
         model = chat.model
         modelCallMs = chat.modelCallMs
         fallbackUsed = chat.fallbackUsed
+        path = 'chat'
       }
-
-      if (!reply) {
-        logChat('chat_empty_reply', { source, model, fallbackUsed })
-        return sendError(res, 502, 'The AI did not return a response. Please try again.')
-      }
-
-      const serializeStarted = Date.now()
-      const payload: {
-        reply: string
-        showSearchOnline?: boolean
-        suggestedSearchTopic?: WebSearchTopic
-      } = { reply }
-      if (searchHint.show) {
-        payload.showSearchOnline = true
-        payload.suggestedSearchTopic = searchHint.topic
-      }
-      const serializeMs = Date.now() - serializeStarted
-
-      logChat('request_timing', {
-        path: docOnly ? 'document' : 'chat',
-        source,
-        totalMs: Date.now() - requestStarted,
-        modelCallMs,
-        serializeMs,
-        webSearch: false,
-        starterPrompt: false,
-        fallbackUsed,
-        model,
-        uploadedDoc: hasUploadedDocument,
-        messageCount: messages.length,
-        lastUserPreview: lastUser.slice(0, 80),
-        showSearchOnline: searchHint.show,
-      })
-
-      return res.json(payload)
-    } catch (err: unknown) {
-      const errorMessage = err instanceof Error ? err.message : String(err)
-      logChat('openai_error', { source, error: errorMessage, webSearch: false, starterPrompt: false })
-      return sendError(res, 502, 'Unable to get an AI response right now. Please try again in a moment.', errorMessage)
     }
-  }
 
-  try {
-    requireEnv('AWS_REGION', 'BEDROCK_MODEL_ID')
-  } catch (e: unknown) {
-    return sendError(res, 500, 'Server is missing AWS configuration.', e instanceof Error ? e.message : undefined)
-  }
-
-  const modelId = getEnv().BEDROCK_MODEL_ID ?? ''
-  try {
-    const reply = (await invokeBedrockChat({ system: instructions, messages })).trim()
     if (!reply) {
+      logChat('chat_empty_reply', { source, model, fallbackUsed, path })
       return sendError(res, 502, 'The AI did not return a response. Please try again.')
     }
 
-    const payload: {
-      reply: string
-      showSearchOnline?: boolean
-      suggestedSearchTopic?: WebSearchTopic
-    } = { reply }
-    if (searchHint.show) {
-      payload.showSearchOnline = true
-      payload.suggestedSearchTopic = searchHint.topic
-    }
-
     logChat('request_timing', {
-      path: 'bedrock',
+      path,
       source,
       totalMs: Date.now() - requestStarted,
-      webSearch: false,
-      starterPrompt: false,
-      fallbackUsed: false,
+      modelCallMs,
+      webSearch: path === 'search',
+      fallbackUsed,
+      model,
       uploadedDoc: hasUploadedDocument,
+      messageCount: messages.length,
+      lastUserPreview: lastUser.slice(0, 80),
     })
 
-    return res.json(payload)
+    return res.json({ reply })
   } catch (err: unknown) {
-    const hint = bedrockErrorHint(err, modelId)
-    logChat('bedrock_error', { source, error: hint })
-    return sendError(res, 502, 'Unable to get an AI response right now. Please try again in a moment.', hint)
+    const errorMessage = err instanceof Error ? err.message : String(err)
+    logChat('openai_error', { source, error: errorMessage, webSearch: searchDecision.run })
+    return sendError(res, 502, 'Unable to get an AI response right now. Please try again in a moment.', errorMessage)
   }
 })

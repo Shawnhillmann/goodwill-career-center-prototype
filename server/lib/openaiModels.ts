@@ -2,6 +2,14 @@ import { getEnv } from './env.js'
 
 export type ModelTier = 'nano' | 'mini' | 'search_fallback'
 
+export function getOpenAiConfig() {
+  const env = getEnv()
+  return {
+    apiKey: env.OPENAI_API_KEY,
+    model: env.OPENAI_MODEL ?? 'gpt-5-mini',
+  }
+}
+
 export function getOpenAiModelIds() {
   const env = getEnv()
   return {
@@ -22,4 +30,10 @@ export function selectChatModel(opts: {
   }
   if (opts.hasUploadedDocument) return models.mini
   return models.nano
+}
+
+export function missingOpenAiEnv(): string[] {
+  const missing: string[] = []
+  if (!getEnv().OPENAI_API_KEY) missing.push('OPENAI_API_KEY')
+  return missing
 }

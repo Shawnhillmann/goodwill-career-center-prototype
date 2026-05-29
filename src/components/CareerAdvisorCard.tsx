@@ -13,8 +13,6 @@ import {
 
 type ChatRole = 'user' | 'advisor'
 
-type SearchTopic = 'jobs' | 'local_resources' | 'events' | 'general'
-
 type ChatMessage = {
   id: string
   role: ChatRole
@@ -23,21 +21,11 @@ type ChatMessage = {
   value?: string
   kind?: 'document'
   attachmentName?: string
-  showSearchOnline?: boolean
-  suggestedSearchTopic?: SearchTopic
 }
 
 type CareerAdvisorCardProps = {
   language: SupportedLanguage
   readAloudEnabled: boolean
-}
-
-function isExplicitSearchRequest(text: string): boolean {
-  const lower = text.trim().toLowerCase()
-  return (
-    /\b(search online|search the web|use the web|look up live|current postings online)\b/i.test(lower) ||
-    lower === 'search online'
-  )
 }
 
 function nextId(): string {
@@ -170,18 +158,14 @@ export function CareerAdvisorCard({ language, readAloudEnabled }: CareerAdvisorC
         const replyText = String(json?.reply ?? '').trim()
         if (!replyText) throw new Error('Sorry — I didn’t get a response. Please try again.')
 
-        const showSearch = Boolean(json?.showSearchOnline)
-        const topic = json?.suggestedSearchTopic as SearchTopic | undefined
-
         setAwaitingAdvisor(false)
         setMessages((prev) => [
-          ...prev.map((m) => (m.role === 'advisor' && m.showSearchOnline ? { ...m, showSearchOnline: false } : m)),
+          ...prev,
           {
             id: nextId(),
             role: 'advisor',
             text: replyText,
             ...(opts?.expectDocument ? { kind: 'document' as const } : {}),
-            ...(showSearch && topic ? { showSearchOnline: true, suggestedSearchTopic: topic } : {}),
           },
         ])
         speak(replyText)
@@ -198,75 +182,6 @@ export function CareerAdvisorCard({ language, readAloudEnabled }: CareerAdvisorC
       }
     },
     [language, speak],
-  )
-
-  const runWebSearch = useCallback(
-    async (topic: SearchTopic, userTextValue: string, docText: string | null) => {
-      try {
-        const resp = await fetch('/api/search', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            messages: [
-              ...messages.map((m) => ({
-                role: m.role === 'advisor' ? 'assistant' : 'user',
-                content: m.role === 'user' ? (m.value ?? m.text) : m.text,
-              })),
-              { role: 'user', content: userTextValue },
-            ],
-            language,
-            suggestedSearchTopic: topic,
-            ...(docText ? { uploadedDocumentText: docText } : {}),
-          }),
-        })
-
-        const rawText = await resp.text().catch(() => '')
-        let json: any = null
-        try {
-          json = rawText ? (JSON.parse(rawText) as any) : null
-        } catch {
-          json = null
-        }
-        if (!resp.ok) {
-          const base = (typeof json?.error === 'string' ? json.error : json?.error?.message) ?? 'Search failed. Please try again.'
-          throw new Error(base)
-        }
-
-        const replyText = String(json?.reply ?? '').trim()
-        if (!replyText) throw new Error('Sorry — search did not return results. Please try again.')
-
-        setAwaitingAdvisor(false)
-        setMessages((prev) => [
-          ...prev.map((m) => (m.role === 'advisor' && m.showSearchOnline ? { ...m, showSearchOnline: false } : m)),
-          { id: nextId(), role: 'advisor', text: replyText },
-        ])
-        speak(replyText)
-      } catch (e: any) {
-        setAwaitingAdvisor(false)
-        setMessages((prev) => [
-          ...prev,
-          {
-            id: nextId(),
-            role: 'advisor',
-            text: e?.message || 'Sorry — search failed. Please try again in a moment.',
-          },
-        ])
-      }
-    },
-    [language, messages, speak],
-  )
-
-  const confirmWebSearch = useCallback(
-    (topic: SearchTopic) => {
-      const value = 'Search online'
-      setMessages((prev) => [
-        ...prev.map((m) => (m.role === 'advisor' && m.showSearchOnline ? { ...m, showSearchOnline: false } : m)),
-        { id: nextId(), role: 'user', text: ui.searchOnline, value },
-      ])
-      setAwaitingAdvisor(true)
-      runWebSearch(topic, value, documentContext)
-    },
-    [documentContext, runWebSearch, ui.searchOnline],
   )
 
   const sendUserMessage = useCallback(
@@ -294,16 +209,9 @@ export function CareerAdvisorCard({ language, readAloudEnabled }: CareerAdvisorC
       const apiMessages = toApiMessages(messages, trimmedValue)
       setMessages((prev) => [...prev, userMessage])
       setAwaitingAdvisor(true)
-      if (isExplicitSearchRequest(trimmedValue)) {
-        const topic =
-          [...messages].reverse().find((m) => m.role === 'advisor' && m.suggestedSearchTopic)?.suggestedSearchTopic ??
-          'general'
-        runWebSearch(topic, trimmedValue, docText)
-      } else {
-        queueAdvisorReply(apiMessages, { expectDocument, uploadedDocumentText: docText, source })
-      }
+      queueAdvisorReply(apiMessages, { expectDocument, uploadedDocumentText: docText, source })
     },
-    [documentContext, messages, queueAdvisorReply, runWebSearch, toApiMessages],
+    [documentContext, messages, queueAdvisorReply, toApiMessages],
   )
 
   useEffect(() => {
@@ -586,19 +494,6 @@ export function CareerAdvisorCard({ language, readAloudEnabled }: CareerAdvisorC
                       <div className="bubble__md">
                         <ReactMarkdown remarkPlugins={ [remarkGfm] }>{ msg.text }</ReactMarkdown>
                       </div>
-
-                      {msg.showSearchOnline && msg.suggestedSearchTopic ? (
-                        <div className="bubble__actions" role="group" aria-label={ ui.suggestedRepliesAria }>
-                          <button
-                            type="button"
-                            className="bubble__action bubble__action--primary"
-                            onClick={ () => confirmWebSearch(msg.suggestedSearchTopic!) }
-                          >
-                            <Search size={ 16 } strokeWidth={ 2 } aria-hidden />
-                            <span>{ ui.searchOnline }</span>
-                          </button>
-                        </div>
-                      ) : null}
 
                       {openDownloadsFor[msg.id] ? (
                         <div className="bubble__actions">

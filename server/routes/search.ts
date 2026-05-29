@@ -1,23 +1,17 @@
 import express from 'express'
 
 import { buildSystemPrompt, type ChatMessage } from '../lib/advisorPrompt.js'
-import { getAiProvider, getOpenAiConfig } from '../lib/aiProvider.js'
 import { logChat } from '../lib/chatLog.js'
 import { sendError } from '../lib/errors.js'
 import { extractHttpLinks, looksLikePlaceholderTemplate } from '../lib/hallucinationGuard.js'
-import {
-  buildConciseSearchQuery,
-  inferSearchTopic,
-  isExplicitWebSearchCommand,
-  type WebSearchTopic,
-} from '../lib/searchIntent.js'
+import { getOpenAiConfig, missingOpenAiEnv } from '../lib/openaiModels.js'
+import { buildConciseSearchQuery, shouldRunWebSearch } from '../lib/searchIntent.js'
 import { runLiveWebSearchPipeline } from '../lib/webSearchPipeline.js'
 
 type SearchRequestBody = {
   messages: ChatMessage[]
   language: string
   uploadedDocumentText?: string
-  suggestedSearchTopic?: WebSearchTopic
 }
 
 function isNonEmptyString(v: unknown): v is string {
@@ -47,6 +41,7 @@ function extractSourcesFromReply(reply: string): Array<{ title: string; url: str
   return sources.slice(0, 5)
 }
 
+/** Dedicated live-search endpoint (rare). Prefer /api/chat which decides automatically. */
 export const searchRouter = express.Router()
 
 searchRouter.post('/', async (req, res) => {
@@ -57,8 +52,9 @@ searchRouter.post('/', async (req, res) => {
     return sendError(res, 400, 'Invalid request. Expected { messages: [...], language: string }.')
   }
 
-  if (getAiProvider() !== 'openai') {
-    return sendError(res, 501, 'Live web search requires OpenAI. Set AI_PROVIDER=openai for search.')
+  const missing = missingOpenAiEnv()
+  if (missing.length) {
+    return sendError(res, 500, 'Server is missing OpenAI configuration.', `Missing: ${ missing.join(', ') }`)
   }
 
   const { apiKey } = getOpenAiConfig()
@@ -74,16 +70,17 @@ searchRouter.post('/', async (req, res) => {
     return sendError(res, 400, 'Please provide at least one message.')
   }
 
-  const lastUser = [...messages].reverse().find((m) => m.role === 'user')?.content ?? ''
-  if (!isExplicitWebSearchCommand(lastUser) && lastUser.toLowerCase() !== 'search online') {
-    return sendError(res, 400, 'Search requires explicit confirmation (Search online button or search command).')
+  const hasUploadedDocument = Boolean(body.uploadedDocumentText?.trim())
+  const searchDecision = shouldRunWebSearch(messages, hasUploadedDocument)
+  if (!searchDecision.run) {
+    return sendError(res, 400, 'This request does not require live web search. Use /api/chat instead.')
   }
 
-  const topic = body.suggestedSearchTopic ?? inferSearchTopic(messages)
+  const topic = searchDecision.topic
   const query = buildConciseSearchQuery(messages, topic)
   const system = buildSystemPrompt(body.language, body.uploadedDocumentText)
 
-  logChat('route_search', { topic, queryLength: query.length })
+  logChat('route_search', { topic, queryLength: query.length, path: 'search_api' })
 
   const searchStarted = Date.now()
   try {
@@ -104,17 +101,15 @@ searchRouter.post('/', async (req, res) => {
     }
 
     const sources = extractSourcesFromReply(pipeline.reply)
-    const serializeMs = Date.now() - searchStarted - modelCallMs
 
     logChat('request_timing', {
       path: 'search',
       totalMs: Date.now() - requestStarted,
       modelCallMs,
-      serializeMs,
       webSearch: true,
       fallbackUsed: pipeline.stage !== 'A_mini_auto',
       model: pipeline.model,
-      uploadedDoc: Boolean(body.uploadedDocumentText?.trim()),
+      uploadedDoc: hasUploadedDocument,
       stage: pipeline.stage,
     })
 

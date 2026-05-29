@@ -25,8 +25,6 @@ type UiStrings = {
   heroSubtitle: string
   quickActionsAria: string
   conversationAria: string
-  suggestedRepliesAria: string
-  searchOnline: string
   messageLabel: string
   addAria: string
   voiceInputAria: string
@@ -64,8 +62,6 @@ const uiStrings: Record<SupportedLanguage, UiStrings> = {
     heroSubtitle: 'How can I help you reach your goals today?',
     quickActionsAria: 'Quick actions',
     conversationAria: 'AI Career Advisor conversation',
-    suggestedRepliesAria: 'Suggested replies',
-    searchOnline: 'Search online',
     messageLabel: 'Message to your career advisor',
     addAria: 'Add',
     voiceInputAria: 'Voice input',
@@ -102,8 +98,6 @@ const uiStrings: Record<SupportedLanguage, UiStrings> = {
     heroSubtitle: '¿Cómo puedo ayudarte a alcanzar tus metas hoy?',
     quickActionsAria: 'Acciones rápidas',
     conversationAria: 'Conversación con el asesor de carreras con IA',
-    suggestedRepliesAria: 'Respuestas sugeridas',
-    searchOnline: 'Buscar en línea',
     messageLabel: 'Mensaje para tu asesor de carreras',
     addAria: 'Agregar',
     voiceInputAria: 'Entrada de voz',
@@ -140,8 +134,6 @@ const uiStrings: Record<SupportedLanguage, UiStrings> = {
     heroSubtitle: 'Kijan mwen ka ede ou atenn objektif ou jodi a?',
     quickActionsAria: 'Aksyon rapid',
     conversationAria: 'Konvèsasyon ak konseye karyè IA',
-    suggestedRepliesAria: 'Repons sijere',
-    searchOnline: 'Chèche sou entènèt',
     messageLabel: 'Mesaj pou konseye karyè ou',
     addAria: 'Ajoute',
     voiceInputAria: 'Antre vwa',
@@ -178,8 +170,6 @@ const uiStrings: Record<SupportedLanguage, UiStrings> = {
     heroSubtitle: 'Jak mogę pomóc Ci osiągnąć Twoje cele dzisiaj?',
     quickActionsAria: 'Szybkie akcje',
     conversationAria: 'Rozmowa z doradcą kariery AI',
-    suggestedRepliesAria: 'Sugerowane odpowiedzi',
-    searchOnline: 'Szukaj online',
     messageLabel: 'Wiadomość do Twojego doradcy kariery',
     addAria: 'Dodaj',
     voiceInputAria: 'Wprowadzanie głosowe',
@@ -216,8 +206,6 @@ const uiStrings: Record<SupportedLanguage, UiStrings> = {
     heroSubtitle: 'Чем я могу помочь вам сегодня?',
     quickActionsAria: 'Быстрые действия',
     conversationAria: 'Диалог с AI‑консультантом по карьере',
-    suggestedRepliesAria: 'Рекомендуемые ответы',
-    searchOnline: 'Искать в интернете',
     messageLabel: 'Сообщение вашему консультанту по карьере',
     addAria: 'Добавить',
     voiceInputAria: 'Голосовой ввод',
@@ -254,8 +242,6 @@ const uiStrings: Record<SupportedLanguage, UiStrings> = {
     heroSubtitle: 'كيف يمكنني مساعدتك في الوصول إلى أهدافك اليوم؟',
     quickActionsAria: 'إجراءات سريعة',
     conversationAria: 'محادثة مع المستشار المهني بالذكاء الاصطناعي',
-    suggestedRepliesAria: 'ردود مقترحة',
-    searchOnline: 'البحث عبر الإنترنت',
     messageLabel: 'رسالة إلى مستشارك المهني',
     addAria: 'إضافة',
     voiceInputAria: 'إدخال صوتي',

@@ -162,36 +162,6 @@ export async function invokeOpenAiResponsesText(params: {
   return buildInvokeResult(json, startedAt, text)
 }
 
-export async function invokeOpenAiResponsesStructuredJson(params: {
-  apiKey: string
-  model: string
-  instructions: string
-  messages: ChatMessage[]
-  jsonSchema: {
-    type: 'json_schema'
-    name: string
-    strict: boolean
-    schema: Record<string, unknown>
-  }
-  maxOutputTokens?: number
-}): Promise<ResponsesInvokeResult> {
-  const startedAt = Date.now()
-  const response = await openAiResponsesFetch(
-    {
-      model: params.model,
-      instructions: params.instructions,
-      input: params.messages.map((m) => ({ role: m.role, content: m.content })),
-      max_output_tokens: params.maxOutputTokens ?? 500,
-      text: { format: params.jsonSchema },
-    },
-    params.apiKey,
-  )
-
-  const json = await parseResponsesBody(response)
-  const text = extractOutputText(json)
-  return buildInvokeResult(json, startedAt, text)
-}
-
 export type WebSearchToolChoice = 'auto' | 'required'
 
 export async function invokeOpenAiResponsesWebSearch(params: {

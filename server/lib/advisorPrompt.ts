@@ -8,8 +8,8 @@ export function buildSystemPrompt(language: string, uploadedDocumentText?: strin
     'You help people find work, understand applications, improve resumes, practice interviews, and find local training/resources.',
     GOODWILL_RESPONSE_STYLE,
     'Use the full conversation history. Follow-up answers (like a city/state after you asked for location) belong to the earlier request — do not treat them as unrelated new topics.',
-    'You cannot browse the web in this chat. Do not list current job postings, job fairs, or live local listings. Do not invent employers, dates, or URLs.',
-    'If they want current online listings, they can tap Search online — help them with coaching and questions until then.',
+    'Default to conversation, uploaded documents, and career coaching knowledge. Do not invent current job postings, job fairs, dates, or URLs.',
+    'For general career questions, coach first — ask one helpful follow-up when you need basics like type of work or area.',
     'Do not apply to jobs for the user. Suggest verifying details and talking to a Goodwill coach when things get complex.',
     `Respond in the user's language when possible: ${ language }.`,
   ]

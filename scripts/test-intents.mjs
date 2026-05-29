@@ -1,21 +1,25 @@
 import {
   buildConciseSearchQuery,
   inferSearchTopic,
-  isExplicitWebSearchCommand,
-  shouldShowSearchOnline,
+  shouldRunWebSearch,
 } from '../server/lib/searchIntent.ts'
 
-const messages = [{ role: 'user' as const, content: 'Help me find a job' }]
-console.log('job starter:', JSON.stringify(shouldShowSearchOnline(messages)))
-console.log('query:', buildConciseSearchQuery(messages, inferSearchTopic(messages)))
+const coaching = [{ role: 'user', content: 'Help me find a job' }]
+console.log('coaching:', JSON.stringify(shouldRunWebSearch(coaching, false)))
+
+const withResume = [{ role: 'user', content: 'What jobs fit me?' }]
+console.log('resume analysis:', JSON.stringify(shouldRunWebSearch(withResume, true)))
+
+const liveJobs = [{ role: 'user', content: 'Find current retail openings near Hartford CT' }]
+console.log('live jobs:', JSON.stringify(shouldRunWebSearch(liveJobs, false)))
+console.log('live query:', buildConciseSearchQuery(liveJobs, inferSearchTopic(liveJobs)))
 
 const local = [
-  { role: 'user' as const, content: 'Help me find local resources' },
-  { role: 'assistant' as const, content: 'What city or ZIP?' },
-  { role: 'user' as const, content: 'Middletown CT 06457' },
+  { role: 'user', content: 'Help me find local resources' },
+  { role: 'assistant', content: 'What city or ZIP?' },
+  { role: 'user', content: 'Middletown CT 06457' },
 ]
-console.log('local thread:', JSON.stringify(shouldShowSearchOnline(local)))
-console.log('local query:', buildConciseSearchQuery(local, inferSearchTopic(local)))
+console.log('location follow-up:', JSON.stringify(shouldRunWebSearch(local, false)))
 
-console.log('explicit search:', isExplicitWebSearchCommand('search online for retail jobs in Hartford CT'))
-console.log('vague ask:', isExplicitWebSearchCommand('help me find a job'))
+const liveLocal = [{ role: 'user', content: 'Find workforce programs near Middletown CT' }]
+console.log('live local:', JSON.stringify(shouldRunWebSearch(liveLocal, false)))

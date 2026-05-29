@@ -1,7 +1,6 @@
 import cors from 'cors'
 import express from 'express'
-import { getAiProvider, getOpenAiConfig } from './lib/aiProvider.js'
-import { getEnv } from './lib/env.js'
+import { getOpenAiConfig, getOpenAiModelIds } from './lib/openaiModels.js'
 import { chatRouter } from './routes/chat.js'
 import { searchRouter } from './routes/search.js'
 import { documentRouter } from './routes/document.js'
@@ -21,23 +20,18 @@ export function createApp() {
 
   app.get('/api/health', (_req, res) => {
     try {
-      const aiProvider = getAiProvider()
-      const env = getEnv()
       const openAi = getOpenAiConfig()
+      const models = getOpenAiModelIds()
       const openaiReady = Boolean(openAi.apiKey)
       res.json({
         ok: true,
         runtime: 'vercel-serverless',
-        aiProvider,
         openaiConfigured: openaiReady,
         openaiModel: openaiReady ? openAi.model : null,
-        bedrockConfigured: Boolean(env.AWS_REGION && env.BEDROCK_MODEL_ID),
-        region: env.AWS_REGION ?? null,
-        modelId: env.BEDROCK_MODEL_ID ? '(set)' : null,
-        ...(aiProvider === 'openai' && !openaiReady
+        openaiNanoModel: openaiReady ? models.nano : null,
+        ...(!openaiReady
           ? {
-              warning:
-                'AI_PROVIDER is openai but OPENAI_API_KEY is not set. Add it in Vercel → Settings → Environment Variables.',
+              warning: 'OPENAI_API_KEY is not set. Add it in Vercel → Settings → Environment Variables.',
             }
           : {}),
       })
@@ -50,7 +44,6 @@ export function createApp() {
   app.use('/api/chat', chatRouter)
   app.use('/api/search', searchRouter)
   // Lazy-load upload route so Node-only PDF parsing libs don't load for plain chat requests.
-  // This prevents serverless startup crashes when optional PDF dependencies require DOM APIs.
   app.use('/api/upload', async (req, res, next) => {
     try {
       const mod = await import('./routes/upload.js')
@@ -61,7 +54,6 @@ export function createApp() {
   })
   app.use('/api/document', documentRouter)
 
-  // Always return JSON for unhandled server errors (important for serverless).
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   app.use((err: unknown, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
     // eslint-disable-next-line no-console
@@ -77,4 +69,3 @@ export function createApp() {
 
   return app
 }
-
