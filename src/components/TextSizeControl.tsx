@@ -1,28 +1,20 @@
 import { useEffect, useId, useRef, useState } from 'react'
 import { ChevronDown } from 'lucide-react'
-import {
-  MAX_TEXT_SIZE_PERCENT,
-  MIN_TEXT_SIZE_PERCENT,
-  TEXT_SIZE_STEP,
-} from '../lib/textSize'
+import { TEXT_SIZE_LEVELS, type TextSizeLevel } from '../lib/textSize'
 
-type TextSizeControlProps = {
-  percent: number
-  onChange: (percent: number) => void
+export type TextSizeOption = {
+  level: TextSizeLevel
   label: string
-  sliderTitle: string
-  smallerHint: string
-  largerHint: string
 }
 
-export function TextSizeControl({
-  percent,
-  onChange,
-  label,
-  sliderTitle,
-  smallerHint,
-  largerHint,
-}: TextSizeControlProps) {
+type TextSizeControlProps = {
+  level: TextSizeLevel
+  onChange: (level: TextSizeLevel) => void
+  label: string
+  options: TextSizeOption[]
+}
+
+export function TextSizeControl({ level, onChange, label, options }: TextSizeControlProps) {
   const [open, setOpen] = useState(false)
   const rootRef = useRef<HTMLDivElement>(null)
   const panelId = useId()
@@ -44,6 +36,10 @@ export function TextSizeControl({
       window.removeEventListener('keydown', onKey)
     }
   }, [open])
+
+  const orderedOptions = TEXT_SIZE_LEVELS.map(
+    (sizeLevel) => options.find((opt) => opt.level === sizeLevel) ?? { level: sizeLevel, label: sizeLevel },
+  )
 
   return (
     <div className="site-header__text-size" ref={ rootRef }>
@@ -67,43 +63,30 @@ export function TextSizeControl({
         <div
           id={ panelId }
           className="site-header__text-size-menu"
-          role="group"
+          role="radiogroup"
           aria-label={ label }
         >
-          <div className="site-header__text-size-controls">
-            <span
-              className="site-header__text-size-a site-header__text-size-a--sm"
-              aria-hidden
-              title={ smallerHint }
-            >
-              A
-            </span>
-            <input
-              type="range"
-              className="site-header__text-size-slider"
-              min={ MIN_TEXT_SIZE_PERCENT }
-              max={ MAX_TEXT_SIZE_PERCENT }
-              step={ TEXT_SIZE_STEP }
-              value={ percent }
-              onChange={ (e) => onChange(Number(e.target.value)) }
-              title={ sliderTitle }
-              aria-label={ sliderTitle }
-              aria-valuemin={ MIN_TEXT_SIZE_PERCENT }
-              aria-valuemax={ MAX_TEXT_SIZE_PERCENT }
-              aria-valuenow={ percent }
-              aria-valuetext={ `${ percent }%` }
-            />
-            <span
-              className="site-header__text-size-a site-header__text-size-a--lg"
-              aria-hidden
-              title={ largerHint }
-            >
-              A
-            </span>
-          </div>
-          <span className="site-header__text-size-value" aria-live="polite">
-            { percent }%
-          </span>
+          {orderedOptions.map((opt) => {
+            const selected = level === opt.level
+            return (
+              <button
+                key={ opt.level }
+                type="button"
+                role="radio"
+                aria-checked={ selected }
+                className={ `site-header__text-size-option site-header__text-size-option--${ opt.level }${ selected ? ' site-header__text-size-option--selected' : '' }` }
+                onClick={ () => {
+                  onChange(opt.level)
+                  setOpen(false)
+                } }
+              >
+                <span className="site-header__text-size-option-a" aria-hidden>
+                  A
+                </span>
+                <span className="site-header__text-size-option-label">{ opt.label }</span>
+              </button>
+            )
+          }) }
         </div>
       ) : null}
     </div>

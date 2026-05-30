@@ -4,7 +4,7 @@ import { Footer } from './components/Footer'
 import { Header } from './components/Header'
 import './App.css'
 import { getUiStrings, supportedLanguages, type SupportedLanguage } from './uiCopy'
-import { loadTextSizePercent, saveTextSizePercent } from './lib/textSize'
+import { loadTextSizeLevel, saveTextSizeLevel, type TextSizeLevel } from './lib/textSize'
 import { isReadAloudSupported } from './lib/readAloudSupport'
 import { ResourcesPage } from './pages/ResourcesPage'
 import { LiveSupportPage } from './pages/LiveSupportPage'
@@ -19,7 +19,7 @@ export default function App() {
     const saved = window.localStorage.getItem('gw.readAloud')
     return saved === 'true'
   })
-  const [textSizePercent, setTextSizePercent] = useState<number>(() => loadTextSizePercent())
+  const [textSizeLevel, setTextSizeLevel] = useState<TextSizeLevel>(() => loadTextSizeLevel())
 
   useEffect(() => {
     window.localStorage.setItem('gw.language', language)
@@ -38,11 +38,20 @@ export default function App() {
     window.localStorage.setItem('gw.readAloud', String(readAloudEnabled))
   }, [readAloudEnabled])
 
-  const handleTextSizeChange = (percent: number) => {
-    setTextSizePercent(saveTextSizePercent(percent))
+  const handleTextSizeChange = (level: TextSizeLevel) => {
+    setTextSizeLevel(saveTextSizeLevel(level))
   }
 
   const ui = useMemo(() => getUiStrings(language), [language])
+  const textSizeOptions = useMemo(
+    () => [
+      { level: 'small' as const, label: ui.textSizeSmall },
+      { level: 'normal' as const, label: ui.textSizeNormal },
+      { level: 'large' as const, label: ui.textSizeLarge },
+      { level: 'veryLarge' as const, label: ui.textSizeVeryLarge },
+    ],
+    [ui],
+  )
   const langTag = supportedLanguages.find((l) => l.code === language)?.bcp47 ?? 'en-US'
 
   return (
@@ -54,8 +63,9 @@ export default function App() {
         onLanguageChange={ setLanguage }
         readAloudEnabled={ readAloudEnabled }
         onReadAloudChange={ setReadAloudEnabled }
-        textSizePercent={ textSizePercent }
+        textSizeLevel={ textSizeLevel }
         onTextSizeChange={ handleTextSizeChange }
+        textSizeOptions={ textSizeOptions }
       />
       <main className="app__main">
         {page === 'resources' ? (

@@ -3,7 +3,8 @@ import { ChevronDown } from 'lucide-react'
 import { GoodwillLogo } from './GoodwillLogo'
 import { getUiStrings, supportedLanguages, type SupportedLanguage } from '../uiCopy'
 import { isReadAloudSupported } from '../lib/readAloudSupport'
-import { TextSizeControl } from './TextSizeControl'
+import type { TextSizeLevel } from '../lib/textSize'
+import { TextSizeControl, type TextSizeOption } from './TextSizeControl'
 
 type HeaderProps = {
   page: 'chat' | 'resources' | 'support'
@@ -12,8 +13,9 @@ type HeaderProps = {
   onLanguageChange: (language: SupportedLanguage) => void
   readAloudEnabled: boolean
   onReadAloudChange: (enabled: boolean) => void
-  textSizePercent: number
-  onTextSizeChange: (percent: number) => void
+  textSizeLevel: TextSizeLevel
+  onTextSizeChange: (level: TextSizeLevel) => void
+  textSizeOptions: TextSizeOption[]
 }
 
 function LanguageMenu({
@@ -89,7 +91,7 @@ function LanguageMenu({
   )
 }
 
-export function Header({ page, onNavigate, language, onLanguageChange, readAloudEnabled, onReadAloudChange, textSizePercent, onTextSizeChange }: HeaderProps) {
+export function Header({ page, onNavigate, language, onLanguageChange, readAloudEnabled, onReadAloudChange, textSizeLevel, onTextSizeChange, textSizeOptions }: HeaderProps) {
   const ui = getUiStrings(language)
   const readAloudAvailable = isReadAloudSupported(language)
 
@@ -133,12 +135,10 @@ export function Header({ page, onNavigate, language, onLanguageChange, readAloud
           <div className="site-header__trailing">
           <div className="site-header__controls" role="group" aria-label={ ui.siteSettings }>
             <TextSizeControl
-              percent={ textSizePercent }
+              level={ textSizeLevel }
               onChange={ onTextSizeChange }
               label={ ui.textSize }
-              sliderTitle={ ui.textSizeSliderAria }
-              smallerHint={ ui.textSizeSmaller }
-              largerHint={ ui.textSizeLarger }
+              options={ textSizeOptions }
             />
             <LanguageMenu language={ language } onLanguageChange={ onLanguageChange } ariaLabel={ ui.language } />
 

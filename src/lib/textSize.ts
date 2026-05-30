@@ -1,40 +1,64 @@
-export const TEXT_SIZE_STORAGE_KEY = 'gw.textSizePercent'
+export type TextSizeLevel = 'small' | 'normal' | 'large' | 'veryLarge'
 
-export const DEFAULT_TEXT_SIZE_PERCENT = 100
-export const MIN_TEXT_SIZE_PERCENT = 85
-export const MAX_TEXT_SIZE_PERCENT = 150
-export const TEXT_SIZE_STEP = 5
+export const TEXT_SIZE_STORAGE_KEY = 'gw.textSize'
+export const LEGACY_TEXT_SIZE_STORAGE_KEY = 'gw.textSizePercent'
 
-export function clampTextSizePercent(percent: number): number {
-  const rounded = Math.round(percent / TEXT_SIZE_STEP) * TEXT_SIZE_STEP
-  return Math.min(MAX_TEXT_SIZE_PERCENT, Math.max(MIN_TEXT_SIZE_PERCENT, rounded))
+export const DEFAULT_TEXT_SIZE_LEVEL: TextSizeLevel = 'normal'
+
+export const TEXT_SIZE_LEVELS: TextSizeLevel[] = ['small', 'normal', 'large', 'veryLarge']
+
+const TEXT_SIZE_SCALE: Record<TextSizeLevel, number> = {
+  small: 0.875,
+  normal: 1,
+  large: 1.125,
+  veryLarge: 1.3125,
 }
 
-export function loadTextSizePercent(): number {
+export function isTextSizeLevel(value: unknown): value is TextSizeLevel {
+  return typeof value === 'string' && TEXT_SIZE_LEVELS.includes(value as TextSizeLevel)
+}
+
+function percentToLevel(percent: number): TextSizeLevel {
+  if (percent < 94) return 'small'
+  if (percent < 106) return 'normal'
+  if (percent < 120) return 'large'
+  return 'veryLarge'
+}
+
+export function getTextSizeScale(level: TextSizeLevel): number {
+  return TEXT_SIZE_SCALE[level]
+}
+
+export function loadTextSizeLevel(): TextSizeLevel {
   try {
     const saved = window.localStorage.getItem(TEXT_SIZE_STORAGE_KEY)
-    if (!saved) return DEFAULT_TEXT_SIZE_PERCENT
-    const parsed = Number.parseInt(saved, 10)
-    return Number.isFinite(parsed) ? clampTextSizePercent(parsed) : DEFAULT_TEXT_SIZE_PERCENT
+    if (isTextSizeLevel(saved)) return saved
+
+    const legacy = window.localStorage.getItem(LEGACY_TEXT_SIZE_STORAGE_KEY)
+    if (legacy) {
+      const parsed = Number.parseInt(legacy, 10)
+      if (Number.isFinite(parsed)) return percentToLevel(parsed)
+    }
   } catch {
-    return DEFAULT_TEXT_SIZE_PERCENT
+    // ignore
   }
+  return DEFAULT_TEXT_SIZE_LEVEL
 }
 
-export function applyTextSizePercent(percent: number): number {
-  const clamped = clampTextSizePercent(percent)
-  const scale = clamped / 100
+export function applyTextSizeLevel(level: TextSizeLevel): TextSizeLevel {
+  const scale = getTextSizeScale(level)
   document.documentElement.style.setProperty('--gw-text-scale', String(scale))
-  document.documentElement.dataset.textSizePercent = String(clamped)
-  return clamped
+  document.documentElement.dataset.textSize = level
+  return level
 }
 
-export function saveTextSizePercent(percent: number): number {
-  const clamped = clampTextSizePercent(percent)
+export function saveTextSizeLevel(level: TextSizeLevel): TextSizeLevel {
+  const valid = isTextSizeLevel(level) ? level : DEFAULT_TEXT_SIZE_LEVEL
   try {
-    window.localStorage.setItem(TEXT_SIZE_STORAGE_KEY, String(clamped))
+    window.localStorage.setItem(TEXT_SIZE_STORAGE_KEY, valid)
+    window.localStorage.removeItem(LEGACY_TEXT_SIZE_STORAGE_KEY)
   } catch {
     // ignore quota / private mode
   }
-  return applyTextSizePercent(clamped)
+  return applyTextSizeLevel(valid)
 }
