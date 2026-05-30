@@ -10,6 +10,13 @@ import {
   type SupportedLanguage,
 } from '../uiCopy'
 import { isReadAloudSupported } from '../lib/readAloudSupport'
+import {
+  playAdvisorMessageSound,
+  playUserMessageSound,
+  startThinkingSound,
+  stopThinkingSound,
+  unlockChatAudio,
+} from '../lib/chatSounds'
 import { listQuickActions, type QuickActionId } from '../quickActions'
 
 type ChatRole = 'user' | 'advisor'
@@ -174,6 +181,7 @@ export function CareerAdvisorCard({ language, readAloudEnabled }: CareerAdvisorC
             ...(opts?.expectDocument ? { kind: 'document' as const } : {}),
           },
         ])
+        playAdvisorMessageSound()
         speak(replyText)
       } catch (e: any) {
         setAwaitingAdvisor(false)
@@ -185,6 +193,7 @@ export function CareerAdvisorCard({ language, readAloudEnabled }: CareerAdvisorC
             text: e?.message || 'Sorry — I’m having trouble responding right now. Please try again.',
           },
         ])
+        playAdvisorMessageSound()
       }
     },
     [language, speak],
@@ -214,6 +223,7 @@ export function CareerAdvisorCard({ language, readAloudEnabled }: CareerAdvisorC
       }
       const apiMessages = toApiMessages(messages, trimmedValue)
       setMessages((prev) => [...prev, userMessage])
+      playUserMessageSound()
       setAwaitingAdvisor(true)
       queueAdvisorReply(apiMessages, { expectDocument, uploadedDocumentText: docText, source, quickAction: opts?.quickAction })
     },
@@ -223,6 +233,28 @@ export function CareerAdvisorCard({ language, readAloudEnabled }: CareerAdvisorC
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' })
   }, [messages, awaitingAdvisor])
+
+  useEffect(() => {
+    if (awaitingAdvisor) {
+      startThinkingSound()
+      return () => stopThinkingSound()
+    }
+    stopThinkingSound()
+  }, [awaitingAdvisor])
+
+  useEffect(() => {
+    const unlock = () => unlockChatAudio()
+    window.addEventListener('pointerdown', unlock, { once: true })
+    window.addEventListener('keydown', unlock, { once: true })
+    return () => {
+      window.removeEventListener('pointerdown', unlock)
+      window.removeEventListener('keydown', unlock)
+    }
+  }, [])
+
+  useEffect(() => {
+    return () => stopThinkingSound()
+  }, [])
 
   useEffect(() => {
     if (readAloudActive) return
@@ -336,6 +368,8 @@ export function CareerAdvisorCard({ language, readAloudEnabled }: CareerAdvisorC
         },
         { id: nextId(), role: 'advisor', text: acknowledgment },
       ])
+      playUserMessageSound()
+      playAdvisorMessageSound()
       speak(acknowledgment)
     } else {
       const value =
