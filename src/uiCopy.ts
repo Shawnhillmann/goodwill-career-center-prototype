@@ -25,6 +25,10 @@ type UiStrings = {
   resourcesTitle: string
   resourcesIntro: string
   siteSettings: string
+  textSize: string
+  textSizeSliderAria: string
+  textSizeSmaller: string
+  textSizeLarger: string
   language: string
   readAloud: string
   readAloudUnavailable: string
@@ -67,6 +71,10 @@ const uiStrings: Record<SupportedLanguage, UiStrings> = {
     resourcesTitle: 'Career resources',
     resourcesIntro: 'Short videos, slideshows, and guides you can use with a coach or on your own.',
     siteSettings: 'Site settings',
+    textSize: 'Text size',
+    textSizeSliderAria: 'Adjust text size for the whole site',
+    textSizeSmaller: 'Smaller text',
+    textSizeLarger: 'Larger text',
     language: 'Language',
     readAloud: 'Read aloud',
     readAloudUnavailable: 'Read aloud is not available in Arabic.',
@@ -108,6 +116,10 @@ const uiStrings: Record<SupportedLanguage, UiStrings> = {
     resourcesTitle: 'Recursos de carrera',
     resourcesIntro: 'Videos cortos, presentaciones y guías para usar con un coach o por tu cuenta.',
     siteSettings: 'Ajustes del sitio',
+    textSize: 'Tamaño de texto',
+    textSizeSliderAria: 'Ajustar el tamaño del texto en todo el sitio',
+    textSizeSmaller: 'Texto más pequeño',
+    textSizeLarger: 'Texto más grande',
     language: 'Idioma',
     readAloud: 'Leer en voz alta',
     readAloudUnavailable: 'La lectura en voz alta no está disponible en árabe.',
@@ -149,6 +161,10 @@ const uiStrings: Record<SupportedLanguage, UiStrings> = {
     resourcesTitle: 'Risorse per la carriera',
     resourcesIntro: 'Video brevi, presentazioni e guide da usare con un coach o in autonomia.',
     siteSettings: 'Impostazioni del sito',
+    textSize: 'Dimensione testo',
+    textSizeSliderAria: 'Regola la dimensione del testo su tutto il sito',
+    textSizeSmaller: 'Testo più piccolo',
+    textSizeLarger: 'Testo più grande',
     language: 'Lingua',
     readAloud: 'Leggi ad alta voce',
     readAloudUnavailable: 'La lettura ad alta voce non è disponibile in arabo.',
@@ -190,6 +206,10 @@ const uiStrings: Record<SupportedLanguage, UiStrings> = {
     resourcesTitle: 'Resous pou karyè',
     resourcesIntro: 'Videyo kout, dyapo, ak gid ou ka itilize ak yon antrenè oswa poukont ou.',
     siteSettings: 'Paramèt sit la',
+    textSize: 'Gwosè tèks',
+    textSizeSliderAria: 'Ajiste gwosè tèks la sou tout sit la',
+    textSizeSmaller: 'Tèks pi piti',
+    textSizeLarger: 'Tèks pi gwo',
     language: 'Lang',
     readAloud: 'Li byen fò',
     readAloudUnavailable: 'Li byen fò pa disponib an arab.',
@@ -231,6 +251,10 @@ const uiStrings: Record<SupportedLanguage, UiStrings> = {
     resourcesTitle: 'Materiały o karierze',
     resourcesIntro: 'Krótkie filmy, prezentacje i poradniki do użycia z doradcą lub samodzielnie.',
     siteSettings: 'Ustawienia strony',
+    textSize: 'Rozmiar tekstu',
+    textSizeSliderAria: 'Dostosuj rozmiar tekstu na całej stronie',
+    textSizeSmaller: 'Mniejszy tekst',
+    textSizeLarger: 'Większy tekst',
     language: 'Język',
     readAloud: 'Czytaj na głos',
     readAloudUnavailable: 'Czytanie na głos nie jest dostępne w języku arabskim.',
@@ -272,6 +296,10 @@ const uiStrings: Record<SupportedLanguage, UiStrings> = {
     resourcesTitle: 'Ресурсы по карьере',
     resourcesIntro: 'Короткие видео, презентации и руководства для работы с консультантом или самостоятельно.',
     siteSettings: 'Настройки сайта',
+    textSize: 'Размер текста',
+    textSizeSliderAria: 'Изменить размер текста на всём сайте',
+    textSizeSmaller: 'Меньший текст',
+    textSizeLarger: 'Больший текст',
     language: 'Язык',
     readAloud: 'Озвучивать текст',
     readAloudUnavailable: 'Озвучивание недоступно для арабского языка.',
@@ -313,6 +341,10 @@ const uiStrings: Record<SupportedLanguage, UiStrings> = {
     resourcesTitle: 'موارد مهنية',
     resourcesIntro: 'فيديوهات قصيرة وعروض شرائح وأدلة يمكنك استخدامها مع مدرب أو بمفردك.',
     siteSettings: 'إعدادات الموقع',
+    textSize: 'حجم النص',
+    textSizeSliderAria: 'ضبط حجم النص على كامل الموقع',
+    textSizeSmaller: 'نص أصغر',
+    textSizeLarger: 'نص أكبر',
     language: 'اللغة',
     readAloud: 'قراءة بصوت عالٍ',
     readAloudUnavailable: 'القراءة بصوت عالٍ غير متاحة باللغة العربية.',

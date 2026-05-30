@@ -4,7 +4,7 @@ export const DEFAULT_GOODWILL_LOGO_SRC = '/goodwill-logo.svg'
 export const SITE_TITLE = 'Goodwill AI Career Center'
 
 type GoodwillLogoProps = {
-  /** Wordmark text size in px (approx) */
+  /** @deprecated Scales with site text size via CSS rem */
   wordmarkSize?: number
   /** Logo image height in px */
   logoHeight?: number
@@ -15,7 +15,6 @@ type GoodwillLogoProps = {
 }
 
 export function GoodwillLogo({
-  wordmarkSize = 22,
   logoHeight = 40,
   logoSrc = DEFAULT_GOODWILL_LOGO_SRC,
   hideWordmark = false,
@@ -40,9 +39,7 @@ export function GoodwillLogo({
         decoding="async"
       />
       {hideWordmark ? null : (
-        <span className="gw-logo__word" style={{ fontSize: wordmarkSize }}>
-          { SITE_TITLE }
-        </span>
+        <span className="gw-logo__word">{ SITE_TITLE }</span>
       )}
     </div>
   )

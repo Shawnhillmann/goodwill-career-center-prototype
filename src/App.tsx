@@ -4,6 +4,7 @@ import { Footer } from './components/Footer'
 import { Header } from './components/Header'
 import './App.css'
 import { getUiStrings, supportedLanguages, type SupportedLanguage } from './uiCopy'
+import { loadTextSizePercent, saveTextSizePercent } from './lib/textSize'
 import { isReadAloudSupported } from './lib/readAloudSupport'
 import { ResourcesPage } from './pages/ResourcesPage'
 import { LiveSupportPage } from './pages/LiveSupportPage'
@@ -18,6 +19,7 @@ export default function App() {
     const saved = window.localStorage.getItem('gw.readAloud')
     return saved === 'true'
   })
+  const [textSizePercent, setTextSizePercent] = useState<number>(() => loadTextSizePercent())
 
   useEffect(() => {
     window.localStorage.setItem('gw.language', language)
@@ -36,6 +38,10 @@ export default function App() {
     window.localStorage.setItem('gw.readAloud', String(readAloudEnabled))
   }, [readAloudEnabled])
 
+  const handleTextSizeChange = (percent: number) => {
+    setTextSizePercent(saveTextSizePercent(percent))
+  }
+
   const ui = useMemo(() => getUiStrings(language), [language])
   const langTag = supportedLanguages.find((l) => l.code === language)?.bcp47 ?? 'en-US'
 
@@ -48,6 +54,8 @@ export default function App() {
         onLanguageChange={ setLanguage }
         readAloudEnabled={ readAloudEnabled }
         onReadAloudChange={ setReadAloudEnabled }
+        textSizePercent={ textSizePercent }
+        onTextSizeChange={ handleTextSizeChange }
       />
       <main className="app__main">
         {page === 'resources' ? (
