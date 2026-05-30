@@ -360,10 +360,7 @@ export function CareerAdvisorCard({ language, readAloudEnabled }: CareerAdvisorC
   const handleQuickAction = (action: QuickActionId) => {
     const copy = quickActions.find((item) => item.id === action)
     if (!copy) return
-    sendUserMessage(
-      { displayText: copy.label, value: copy.starter },
-      { source: 'quick_option', quickAction: action },
-    )
+    sendUserMessage(copy.starter, { source: 'quick_option', quickAction: action })
     inputRef.current?.focus()
   }
 
