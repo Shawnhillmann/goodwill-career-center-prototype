@@ -1,6 +1,12 @@
+import { parseAdvisorDocumentType } from '../../shared/advisorMessage'
+
+export type AdvisorChatDoneMeta = {
+  documentType?: 'resume'
+}
+
 export type AdvisorChatStreamHandlers = {
   onDelta: (chunk: string, fullText: string) => void
-  onDone: (reply: string) => void
+  onDone: (reply: string, meta?: AdvisorChatDoneMeta) => void
   onError: (message: string) => void
 }
 
@@ -20,6 +26,11 @@ function parseSseBlock(block: string): { event: string; data: Record<string, unk
   }
 }
 
+function parseAdvisorDoneMeta(data: Record<string, unknown> | null): AdvisorChatDoneMeta | undefined {
+  const documentType = parseAdvisorDocumentType(data?.documentType)
+  return documentType ? { documentType } : undefined
+}
+
 async function consumeSseBody(response: Response, handlers: AdvisorChatStreamHandlers): Promise<void> {
   const reader = response.body?.getReader()
   if (!reader) {
@@ -32,10 +43,10 @@ async function consumeSseBody(response: Response, handlers: AdvisorChatStreamHan
   let full = ''
   let finished = false
 
-  const finish = (reply: string) => {
+  const finish = (reply: string, meta?: AdvisorChatDoneMeta) => {
     if (finished) return
     finished = true
-    handlers.onDone(reply)
+    handlers.onDone(reply, meta)
   }
 
   while (true) {
@@ -54,7 +65,7 @@ async function consumeSseBody(response: Response, handlers: AdvisorChatStreamHan
         full += chunk
         handlers.onDelta(chunk, full)
       } else if (event === 'done' && typeof data?.reply === 'string') {
-        finish(String(data.reply).trim())
+        finish(String(data.reply).trim(), parseAdvisorDoneMeta(data))
       } else if (event === 'error') {
         const base =
           typeof data?.message === 'string'
@@ -107,7 +118,7 @@ async function consumeJsonBody(response: Response, rawText: string, handlers: Ad
     handlers.onError('Sorry — I didn’t get a response. Please try again.')
     return
   }
-  handlers.onDone(reply)
+  handlers.onDone(reply, parseAdvisorDoneMeta(json))
 }
 
 /** Read a streamed or JSON /api/chat response. */

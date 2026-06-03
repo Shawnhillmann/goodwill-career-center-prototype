@@ -197,7 +197,10 @@ chatRouter.post('/', async (req, res) => {
         streamed: true,
       })
 
-      writeSse(res, 'done', { reply })
+      writeSse(res, 'done', {
+        reply,
+        ...(resumeOnly ? { documentType: 'resume' } : {}),
+      })
       endSse(res)
       return
     } catch (err: unknown) {
@@ -297,7 +300,10 @@ chatRouter.post('/', async (req, res) => {
       lastUserPreview: lastUser.slice(0, 80),
     })
 
-    return res.json({ reply })
+    return res.json({
+      reply,
+      ...(resumeOnly ? { documentType: 'resume' } : {}),
+    })
   } catch (err: unknown) {
     const errorMessage = err instanceof Error ? err.message : String(err)
     const diag = resultDiagnostics(lastModelResult)

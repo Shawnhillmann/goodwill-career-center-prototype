@@ -61,13 +61,8 @@ export function shouldOutputResumeDocument(
   const lastAssistant = [...messages].reverse().find((m) => m.role === 'assistant')?.content ?? ''
   if (advisorOfferedResumeConfirmation(lastAssistant)) return true
 
-  if (threadDiscussesResume(messages)) {
-    const recentAssistant = messages
-      .filter((m) => m.role === 'assistant')
-      .slice(-3)
-      .some((m) => advisorOfferedResumeConfirmation(m.content))
-    if (recentAssistant) return true
-  }
+  // Ongoing resume workflow: user re-confirms after edits, regeneration, or a prior resume output.
+  if (threadDiscussesResume(messages)) return true
 
   return false
 }

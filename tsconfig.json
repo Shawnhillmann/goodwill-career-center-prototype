@@ -17,5 +17,5 @@
     "noFallthroughCasesInSwitch": true,
     "verbatimModuleSyntax": true
   },
-  "include": ["src", "server", "api", "shared"]
+  "exclude": ["**/*.test.ts", "**/*.test.tsx", "vitest.config.ts", "vitest.setup.ts"]
 }

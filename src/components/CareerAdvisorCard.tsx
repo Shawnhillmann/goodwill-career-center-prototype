@@ -4,7 +4,6 @@ import remarkGfm from 'remark-gfm'
 import {
   ClipboardList,
   Compass,
-  Download,
   FileText,
   ListChecks,
   MapPin,
@@ -36,9 +35,14 @@ import {
 import { consumeAdvisorChatStream } from '../lib/chatStream'
 import { shouldStreamAdvisorReply } from '../lib/streamingPolicy'
 import { createStreamTextReveal } from '../lib/streamTextReveal'
-import { looksLikeResume, parseResumeDocument } from '../../shared/resumeParse'
 import { isResumeOutputRequest } from '../lib/resumeTask'
+import {
+  resolveAdvisorMessageMeta,
+  shouldRenderResumePreview,
+  type AdvisorDocumentType,
+} from '../../shared/advisorMessage'
 import { ResumePreview } from './ResumePreview'
+import { MessageActionsMenu } from './MessageActionsMenu'
 import { listQuickActions, type QuickActionId } from '../quickActions'
 
 type ChatRole = 'user' | 'advisor'
@@ -50,6 +54,7 @@ type ChatMessage = {
   /** Canonical message used for internal matching (prototype). */
   value?: string
   kind?: 'document'
+  documentType?: AdvisorDocumentType
   attachmentName?: string
   streaming?: boolean
 }
@@ -95,7 +100,6 @@ export function CareerAdvisorCard({ language, readAloudEnabled }: CareerAdvisorC
   const [pendingUploadName, setPendingUploadName] = useState<string | null>(null)
   const [documentContext, setDocumentContext] = useState<string | null>(null)
   const [uploading, setUploading] = useState(false)
-  const [openDownloadsFor, setOpenDownloadsFor] = useState<Record<string, boolean>>({})
 
   const ui = useMemo(() => getUiStrings(language), [language])
   const readAloudActive = readAloudEnabled && isReadAloudSupported(language)
@@ -168,6 +172,12 @@ export function CareerAdvisorCard({ language, readAloudEnabled }: CareerAdvisorC
       })
       const streamMessageId = nextId()
       let streamBubbleVisible = false
+
+      const applyDocMeta = (message: ChatMessage, documentType?: string | null): ChatMessage => {
+        const meta = resolveAdvisorMessageMeta({ documentType, expectResume })
+        if (!meta.documentType) return message
+        return { ...message, kind: 'document', documentType: 'resume' }
+      }
 
       const reveal = useStream
         ? createStreamTextReveal(
@@ -244,12 +254,14 @@ export function CareerAdvisorCard({ language, readAloudEnabled }: CareerAdvisorC
               setAwaitingAdvisor(false)
               setMessages((prev) => [
                 ...prev,
-                {
-                  id: streamMessageId,
-                  role: 'advisor',
-                  text: fullText,
-                  ...(expectResume ? { kind: 'document' as const } : {}),
-                },
+                applyDocMeta(
+                  {
+                    id: streamMessageId,
+                    role: 'advisor',
+                    text: fullText,
+                  },
+                  null,
+                ),
               ])
               return
             }
@@ -257,8 +269,7 @@ export function CareerAdvisorCard({ language, readAloudEnabled }: CareerAdvisorC
               prev.map((m) => (m.id === streamMessageId ? { ...m, text: fullText } : m)),
             )
           },
-          onDone: (replyText) => {
-            const isResumeDoc = expectResume && looksLikeResume(replyText)
+          onDone: (replyText, meta) => {
             reveal?.flush()
             stopStreamingSound()
             setAwaitingAdvisor(false)
@@ -266,17 +277,19 @@ export function CareerAdvisorCard({ language, readAloudEnabled }: CareerAdvisorC
               if (!streamBubbleVisible) {
                 return [
                   ...prev,
-                  {
-                    id: streamMessageId,
-                    role: 'advisor',
-                    text: replyText,
-                    ...(isResumeDoc ? { kind: 'document' as const } : {}),
-                  },
+                  applyDocMeta(
+                    {
+                      id: streamMessageId,
+                      role: 'advisor',
+                      text: replyText,
+                    },
+                    meta?.documentType,
+                  ),
                 ]
               }
               return prev.map((m) =>
                 m.id === streamMessageId
-                  ? { ...m, text: replyText, streaming: false, ...(isResumeDoc ? { kind: 'document' as const } : {}) }
+                  ? applyDocMeta({ ...m, text: replyText, streaming: false }, meta?.documentType)
                   : m,
               )
             })
@@ -511,15 +524,28 @@ export function CareerAdvisorCard({ language, readAloudEnabled }: CareerAdvisorC
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
     a.href = url
-    a.download = format === 'docx' ? 'message.docx' : 'message.pdf'
+    a.download = format === 'docx' ? 'resume.docx' : 'resume.pdf'
     document.body.appendChild(a)
     a.click()
     a.remove()
     URL.revokeObjectURL(url)
   }
 
-  const toggleDownloads = (id: string) => {
-    setOpenDownloadsFor((prev) => ({ ...prev, [id]: !prev[id] }))
+  const copyMessageText = async (content: string) => {
+    try {
+      await navigator.clipboard.writeText(content)
+    } catch {
+      // Fallback for older browsers or denied permission.
+      const textarea = document.createElement('textarea')
+      textarea.value = content
+      textarea.setAttribute('readonly', '')
+      textarea.style.position = 'absolute'
+      textarea.style.left = '-9999px'
+      document.body.appendChild(textarea)
+      textarea.select()
+      document.execCommand('copy')
+      textarea.remove()
+    }
   }
 
   const handlePickFile = () => fileInputRef.current?.click()
@@ -641,43 +667,27 @@ export function CareerAdvisorCard({ language, readAloudEnabled }: CareerAdvisorC
                     <span className="msg-avatar__g">g</span>
                   </span>
                   <div
-                    className={ `bubble bubble--advisor${ msg.streaming ? ' bubble--streaming' : '' }${ msg.kind === 'document' ? ' bubble--resume-doc' : '' }` }
+                    className={ `bubble bubble--advisor${ msg.streaming ? ' bubble--streaming' : '' }${ shouldRenderResumePreview(msg) ? ' bubble--resume-doc' : '' }` }
                   >
                     <div className="bubble__content">
-                      {(() => {
-                        const resumeDoc =
-                          msg.kind === 'document' ? parseResumeDocument(msg.text) : null
-                        if (resumeDoc) return <ResumePreview text={ msg.text } />
-                        return (
-                          <div className="bubble__md">
-                            <ReactMarkdown remarkPlugins={ [remarkGfm] }>{ msg.text }</ReactMarkdown>
-                          </div>
-                        )
-                      })()}
-
-                      {openDownloadsFor[msg.id] ? (
-                        <div className="bubble__actions">
-                          <button type="button" className="bubble__action" onClick={ () => downloadDocument(msg.text, 'docx') }>
-                            <Download size={ 16 } strokeWidth={ 2 } aria-hidden />
-                            <span>Download as Word</span>
-                          </button>
-                          <button type="button" className="bubble__action" onClick={ () => downloadDocument(msg.text, 'pdf') }>
-                            <Download size={ 16 } strokeWidth={ 2 } aria-hidden />
-                            <span>Download as PDF</span>
-                          </button>
+                      {shouldRenderResumePreview(msg) ? (
+                        <ResumePreview text={ msg.text } />
+                      ) : (
+                        <div className="bubble__md">
+                          <ReactMarkdown remarkPlugins={ [remarkGfm] }>{ msg.text }</ReactMarkdown>
                         </div>
-                      ) : null}
+                      )}
                     </div>
+                    {!msg.streaming ? (
+                      <MessageActionsMenu
+                        messageId={ msg.id }
+                        text={ msg.text }
+                        onCopy={ copyMessageText }
+                        onExportPdf={ (text) => downloadDocument(text, 'pdf') }
+                        onExportWord={ (text) => downloadDocument(text, 'docx') }
+                      />
+                    ) : null}
                   </div>
-                  <button
-                    type="button"
-                    className="msg-tool"
-                    aria-label="Show download options"
-                    aria-expanded={ Boolean(openDownloadsFor[msg.id]) }
-                    onClick={ () => toggleDownloads(msg.id) }
-                  >
-                    <Download size={ 14 } strokeWidth={ 2 } aria-hidden />
-                  </button>
                 </div>
               ),
             )}

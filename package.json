@@ -9,9 +9,14 @@
     "dev:all": "concurrently -k -n \"server,web\" -c \"cyan,magenta\" \"npm run server\" \"npm run dev\"",
     "build": "tsc && vite build && node scripts/build-vercel-api.mjs",
     "build:api": "node scripts/build-vercel-api.mjs",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "test": "vitest run --config vitest.config.ts",
+    "test:watch": "vitest --config vitest.config.ts"
   },
   "devDependencies": {
+    "@testing-library/jest-dom": "^6.9.1",
+    "@testing-library/react": "^16.3.0",
+    "@testing-library/user-event": "^14.6.1",
     "@types/cors": "^2.8.19",
     "@types/express": "^5.0.6",
     "@types/multer": "^2.1.0",
@@ -26,7 +31,9 @@
     "esbuild": "0.28.0",
     "tsx": "^4.22.3",
     "typescript": "6.0.2",
-    "vite": "8.0.12"
+    "vite": "8.0.12",
+    "vitest": "^3.2.4",
+    "jsdom": "^26.1.0"
   },
   "dependencies": {
     "@thednp/dommatrix": "^2.0.12",
