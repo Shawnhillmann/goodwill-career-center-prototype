@@ -8,6 +8,7 @@ import { loadTextSizeLevel, saveTextSizeLevel, type TextSizeLevel } from './lib/
 import { isReadAloudSupported } from './lib/readAloudSupport'
 import { ResourcesPage } from './pages/ResourcesPage'
 import { LiveSupportPage } from './pages/LiveSupportPage'
+import { warmApiBackend } from './lib/warmApi'
 
 export default function App() {
   const [page, setPage] = useState<'chat' | 'resources' | 'support'>('chat')
@@ -20,6 +21,10 @@ export default function App() {
     return saved === 'true'
   })
   const [textSizeLevel, setTextSizeLevel] = useState<TextSizeLevel>(() => loadTextSizeLevel())
+
+  useEffect(() => {
+    warmApiBackend()
+  }, [])
 
   useEffect(() => {
     window.localStorage.setItem('gw.language', language)

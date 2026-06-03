@@ -16,6 +16,10 @@ export function createApp() {
 
   app.use(express.json({ limit: '1mb' }))
 
+  app.get('/api/warm', (_req, res) => {
+    res.json({ ok: true, warmed: true, runtime: 'local' })
+  })
+
   app.get('/api/health', (_req, res) => {
     try {
       const openAi = getOpenAiConfig()

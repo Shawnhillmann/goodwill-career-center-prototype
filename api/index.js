@@ -47,6 +47,11 @@ module.exports = async function vercelHandler(req, res) {
       })
     }
 
+    if (url.startsWith('/api/warm')) {
+      await getFullHandler()
+      return safeJson(res, 200, { ok: true, warmed: true })
+    }
+
     if (url.startsWith('/api/debug-env')) {
       return safeJson(res, 200, {
         OPENAI_API_KEY: envBool('OPENAI_API_KEY'),
