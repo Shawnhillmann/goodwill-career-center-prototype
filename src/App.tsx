@@ -6,12 +6,14 @@ import './App.css'
 import { getUiStrings, supportedLanguages, type SupportedLanguage } from './uiCopy'
 import { loadTextSizeLevel, saveTextSizeLevel, type TextSizeLevel } from './lib/textSize'
 import { isReadAloudSupported } from './lib/readAloudSupport'
+import { HomeExploreCards } from './components/HomeExploreCards'
 import { ResourcesPage } from './pages/ResourcesPage'
 import { LiveSupportPage } from './pages/LiveSupportPage'
+import { applyPageHash, hashToPage, type AppPage } from './lib/appNavigation'
 import { warmApiBackend } from './lib/warmApi'
 
 export default function App() {
-  const [page, setPage] = useState<'chat' | 'resources' | 'support'>('chat')
+  const [page, setPage] = useState<AppPage>(() => hashToPage(window.location.hash))
   const [language, setLanguage] = useState<SupportedLanguage>(() => {
     const saved = window.localStorage.getItem('gw.language') as SupportedLanguage | null
     return saved && supportedLanguages.some((l) => l.code === saved) ? saved : 'en'
@@ -24,6 +26,18 @@ export default function App() {
 
   useEffect(() => {
     warmApiBackend()
+  }, [])
+
+  const navigate = (next: AppPage) => {
+    setPage(next)
+    applyPageHash(next)
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
+
+  useEffect(() => {
+    const onHashChange = () => setPage(hashToPage(window.location.hash))
+    window.addEventListener('hashchange', onHashChange)
+    return () => window.removeEventListener('hashchange', onHashChange)
   }, [])
 
   useEffect(() => {
@@ -63,7 +77,7 @@ export default function App() {
     <div className="app" id="top" lang={ langTag } dir={ language === 'ar' ? 'rtl' : 'ltr' }>
       <Header
         page={ page }
-        onNavigate={ (next) => setPage(next) }
+        onNavigate={ navigate }
         language={ language }
         onLanguageChange={ setLanguage }
         readAloudEnabled={ readAloudEnabled }
@@ -72,16 +86,21 @@ export default function App() {
         onTextSizeChange={ handleTextSizeChange }
         textSizeOptions={ textSizeOptions }
       />
-      <main className="app__main">
+      <main className={ `app__main${ page === 'chat' ? ' app__main--chat' : '' }` }>
         {page === 'resources' ? (
-          <ResourcesPage language={ language } onBack={ () => setPage('chat') } />
+          <ResourcesPage language={ language } onBack={ () => navigate('chat') } />
         ) : page === 'support' ? (
-          <LiveSupportPage language={ language } />
+          <LiveSupportPage language={ language } onBack={ () => navigate('chat') } />
         ) : (
-          <CareerAdvisorCard
-            language={ language }
-            readAloudEnabled={ readAloudEnabled && isReadAloudSupported(language) }
-          />
+          <div className="chat-view">
+            <div className="chat-view__panel">
+              <CareerAdvisorCard
+                language={ language }
+                readAloudEnabled={ readAloudEnabled && isReadAloudSupported(language) }
+              />
+            </div>
+            <HomeExploreCards language={ language } onNavigate={ navigate } />
+          </div>
         )}
       </main>
       <Footer language={ language } />

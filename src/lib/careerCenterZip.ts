@@ -4,21 +4,59 @@ export function normalizeZipInput(value: string): string {
   return value.replace(/\D/g, '').slice(0, 5)
 }
 
-export function parseZipCode(zip: string): number | null {
+export function parseZipCode(zip: string): string | null {
   const normalized = normalizeZipInput(zip)
-  if (normalized.length !== 5) return null
-  const parsed = Number.parseInt(normalized, 10)
-  return Number.isFinite(parsed) ? parsed : null
+  return normalized.length === 5 ? normalized : null
 }
 
-/** Rough sort by numeric ZIP distance (placeholder until real geocoding is available). */
-export function sortCentersByZip(centers: CareerCenter[], userZip: string): CareerCenter[] {
-  const user = parseZipCode(userZip)
-  if (user === null) return [...centers]
+export type Coordinates = { lat: number; lng: number }
 
-  return [...centers].sort((a, b) => {
-    const zipA = parseZipCode(a.zip) ?? Number.MAX_SAFE_INTEGER
-    const zipB = parseZipCode(b.zip) ?? Number.MAX_SAFE_INTEGER
-    return Math.abs(zipA - user) - Math.abs(zipB - user)
-  })
+const EARTH_RADIUS_MILES = 3958.8
+
+/** Great-circle distance in miles between two lat/lng points. */
+export function haversineDistanceMiles(a: Coordinates, b: Coordinates): number {
+  const toRad = (deg: number) => (deg * Math.PI) / 180
+  const dLat = toRad(b.lat - a.lat)
+  const dLng = toRad(b.lng - a.lng)
+  const lat1 = toRad(a.lat)
+  const lat2 = toRad(b.lat)
+  const sinLat = Math.sin(dLat / 2)
+  const sinLng = Math.sin(dLng / 2)
+  const h = sinLat * sinLat + Math.cos(lat1) * Math.cos(lat2) * sinLng * sinLng
+  return EARTH_RADIUS_MILES * 2 * Math.atan2(Math.sqrt(h), Math.sqrt(1 - h))
+}
+
+export type RankedCareerCenter = CareerCenter & {
+  distanceMiles: number | null
+}
+
+export type ZipSortResult = {
+  centers: RankedCareerCenter[]
+}
+
+function defaultCenterOrder(centers: CareerCenter[]): RankedCareerCenter[] {
+  return [...centers]
+    .sort((a, b) => a.city.localeCompare(b.city))
+    .map((center) => ({ ...center, distanceMiles: null }))
+}
+
+/** Sort career centers by distance from the user's coordinates. */
+export function sortCentersByDistance(
+  centers: CareerCenter[],
+  userCoords: Coordinates | null,
+): ZipSortResult {
+  if (!userCoords) {
+    return { centers: defaultCenterOrder(centers) }
+  }
+
+  const ranked = centers.map((center) => ({
+    ...center,
+    distanceMiles: haversineDistanceMiles(userCoords, {
+      lat: center.latitude,
+      lng: center.longitude,
+    }),
+  }))
+
+  ranked.sort((a, b) => (a.distanceMiles ?? 0) - (b.distanceMiles ?? 0))
+  return { centers: ranked }
 }

@@ -1,7 +1,20 @@
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
-import { Compass, Download, FileText, GraduationCap, MapPin, MessageSquare, Mic, Paperclip, Search, Send, UserRound, X } from 'lucide-react'
+import {
+  ClipboardList,
+  Compass,
+  Download,
+  FileText,
+  ListChecks,
+  MapPin,
+  MessageSquare,
+  Mic,
+  Paperclip,
+  Send,
+  UserRound,
+  X,
+} from 'lucide-react'
 import {
   formatFileOnlyUserMessage,
   formatFileUploadAcknowledgment,
@@ -23,6 +36,9 @@ import {
 import { consumeAdvisorChatStream } from '../lib/chatStream'
 import { shouldStreamAdvisorReply } from '../lib/streamingPolicy'
 import { createStreamTextReveal } from '../lib/streamTextReveal'
+import { looksLikeResume, parseResumeDocument } from '../../shared/resumeParse'
+import { isResumeOutputRequest } from '../lib/resumeTask'
+import { ResumePreview } from './ResumePreview'
 import { listQuickActions, type QuickActionId } from '../quickActions'
 
 type ChatRole = 'user' | 'advisor'
@@ -90,12 +106,12 @@ export function CareerAdvisorCard({ language, readAloudEnabled }: CareerAdvisorC
 
   const quickActions = useMemo(() => {
     const actions = listQuickActions(language)
-    const icons: Record<QuickActionId, typeof Search> = {
-      find_jobs: Search,
-      career_options: Compass,
-      resume_review: FileText,
-      interview_prep: MessageSquare,
-      build_skills: GraduationCap,
+    const icons: Record<QuickActionId, typeof Compass> = {
+      explore_careers: Compass,
+      build_resume: FileText,
+      help_apply: ClipboardList,
+      practice_interviews: MessageSquare,
+      career_plan: ListChecks,
       local_resources: MapPin,
     }
     return actions.map((action) => ({ ...action, icon: icons[action.id] }))
@@ -139,9 +155,14 @@ export function CareerAdvisorCard({ language, readAloudEnabled }: CareerAdvisorC
       const quickAction = opts?.quickAction
       const lastUserContent =
         [...apiMessages].reverse().find((m) => m.role === 'user')?.content?.trim() ?? ''
+      const expectResume = Boolean(
+        opts?.expectDocument ||
+          isResumeOutputRequest(apiMessages, lastUserContent, Boolean(docText?.trim()), opts?.quickAction),
+      )
       const useStream = shouldStreamAdvisorReply({
+        messages: apiMessages,
         userMessage: lastUserContent,
-        expectDocument: Boolean(opts?.expectDocument),
+        expectDocument: expectResume,
         quickAction,
         hasUploadedDocument: Boolean(docText?.trim()),
       })
@@ -227,7 +248,7 @@ export function CareerAdvisorCard({ language, readAloudEnabled }: CareerAdvisorC
                   id: streamMessageId,
                   role: 'advisor',
                   text: fullText,
-                  ...(opts?.expectDocument ? { kind: 'document' as const } : {}),
+                  ...(expectResume ? { kind: 'document' as const } : {}),
                 },
               ])
               return
@@ -237,6 +258,7 @@ export function CareerAdvisorCard({ language, readAloudEnabled }: CareerAdvisorC
             )
           },
           onDone: (replyText) => {
+            const isResumeDoc = expectResume && looksLikeResume(replyText)
             reveal?.flush()
             stopStreamingSound()
             setAwaitingAdvisor(false)
@@ -248,12 +270,14 @@ export function CareerAdvisorCard({ language, readAloudEnabled }: CareerAdvisorC
                     id: streamMessageId,
                     role: 'advisor',
                     text: replyText,
-                    ...(opts?.expectDocument ? { kind: 'document' as const } : {}),
+                    ...(isResumeDoc ? { kind: 'document' as const } : {}),
                   },
                 ]
               }
               return prev.map((m) =>
-                m.id === streamMessageId ? { ...m, text: replyText, streaming: false } : m,
+                m.id === streamMessageId
+                  ? { ...m, text: replyText, streaming: false, ...(isResumeDoc ? { kind: 'document' as const } : {}) }
+                  : m,
               )
             })
             playAdvisorMessageSound()
@@ -282,7 +306,6 @@ export function CareerAdvisorCard({ language, readAloudEnabled }: CareerAdvisorC
       const trimmedDisplay = displayText.trim()
       const trimmedValue = value.trim()
       if (!trimmedValue && !attachmentName) return
-      const expectDocument = isExplicitDocumentRequest(trimmedValue)
       const docText = documentText ?? documentContext
       const source = opts?.source ?? 'typed'
       const userMessage: ChatMessage = {
@@ -293,6 +316,12 @@ export function CareerAdvisorCard({ language, readAloudEnabled }: CareerAdvisorC
         ...(attachmentName ? { attachmentName } : {}),
       }
       const apiMessages = toApiMessages(messages, trimmedValue)
+      const expectDocument = isResumeOutputRequest(
+        apiMessages,
+        trimmedValue,
+        Boolean(docText?.trim()),
+        opts?.quickAction,
+      )
       setMessages((prev) => [...prev, userMessage])
       playUserMessageSound()
       setAwaitingAdvisor(true)
@@ -471,24 +500,11 @@ export function CareerAdvisorCard({ language, readAloudEnabled }: CareerAdvisorC
 
   const chatEmpty = messages.length === 0
 
-  function isExplicitDocumentRequest(text: string) {
-    const s = text.toLowerCase()
-    return (
-      /\b(resume|résumé|cv|curriculum vitae)\b/.test(s) ||
-      /\bcover letter\b/.test(s) ||
-      /\b(write|draft|generate|create|format)\b/.test(s) &&
-        /\b(resume|résumé|cv|cover letter|letter)\b/.test(s)
-    )
-  }
-
-  // Document heuristics are still used to tag messages (and can be reused later),
-  // but downloads are now available for all messages behind a toggle.
-
   const downloadDocument = async (content: string, format: 'docx' | 'pdf') => {
     const resp = await fetch('/api/document/export', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ content, format, fileName: 'message' }),
+      body: JSON.stringify({ content, format, fileName: 'resume' }),
     })
     if (!resp.ok) return
     const blob = await resp.blob()
@@ -624,11 +640,20 @@ export function CareerAdvisorCard({ language, readAloudEnabled }: CareerAdvisorC
                   <span className="msg-avatar msg-avatar--advisor" aria-hidden>
                     <span className="msg-avatar__g">g</span>
                   </span>
-                  <div className={ `bubble bubble--advisor${ msg.streaming ? ' bubble--streaming' : '' }` }>
+                  <div
+                    className={ `bubble bubble--advisor${ msg.streaming ? ' bubble--streaming' : '' }${ msg.kind === 'document' ? ' bubble--resume-doc' : '' }` }
+                  >
                     <div className="bubble__content">
-                      <div className="bubble__md">
-                        <ReactMarkdown remarkPlugins={ [remarkGfm] }>{ msg.text }</ReactMarkdown>
-                      </div>
+                      {(() => {
+                        const resumeDoc =
+                          msg.kind === 'document' ? parseResumeDocument(msg.text) : null
+                        if (resumeDoc) return <ResumePreview text={ msg.text } />
+                        return (
+                          <div className="bubble__md">
+                            <ReactMarkdown remarkPlugins={ [remarkGfm] }>{ msg.text }</ReactMarkdown>
+                          </div>
+                        )
+                      })()}
 
                       {openDownloadsFor[msg.id] ? (
                         <div className="bubble__actions">

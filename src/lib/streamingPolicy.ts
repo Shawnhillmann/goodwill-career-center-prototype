@@ -1,18 +1,24 @@
 import type { QuickActionId } from '../quickActions'
+import { shouldOutputResumeDocument } from './resumeTask'
 
-/** Resume / document work is shown all at once; short conversational replies stream. */
+/** Short conversational replies stream; finished resume/CV documents do not. */
 export function shouldStreamAdvisorReply(opts: {
+  messages: Array<{ role: 'user' | 'assistant'; content: string }>
   userMessage: string
   expectDocument: boolean
   quickAction?: QuickActionId
   hasUploadedDocument: boolean
 }): boolean {
   if (opts.expectDocument) return false
-  if (opts.quickAction === 'resume_review') return false
-  if (opts.hasUploadedDocument) return false
-
-  const s = opts.userMessage.toLowerCase()
-  if (/\b(resume|résumé|cv|curriculum vitae|cover letter)\b/.test(s)) return false
-
+  if (
+    shouldOutputResumeDocument(
+      opts.messages,
+      opts.userMessage,
+      opts.hasUploadedDocument,
+      opts.quickAction,
+    )
+  ) {
+    return false
+  }
   return true
 }

@@ -17,5 +17,5 @@
     "noFallthroughCasesInSwitch": true,
     "verbatimModuleSyntax": true
   },
-  "include": ["src", "server", "api"]
+  "include": ["src", "server", "api", "shared"]
 }

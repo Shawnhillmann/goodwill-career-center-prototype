@@ -3,6 +3,7 @@ import express from 'express'
 import { getOpenAiConfig, getOpenAiModelIds } from './lib/openaiModels.js'
 import { chatRouter } from './routes/chat.js'
 import { documentRouter } from './routes/document.js'
+import { zipCoordsRouter } from './routes/zipCoords.js'
 
 export function createApp() {
   const app = express()
@@ -44,6 +45,7 @@ export function createApp() {
   })
 
   app.use('/api/chat', chatRouter)
+  app.use('/api/zip', zipCoordsRouter)
   app.use('/api/upload', async (req, res, next) => {
     try {
       const mod = await import('./routes/upload.js')

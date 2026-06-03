@@ -69,7 +69,7 @@ Redeploy after changing env vars. Verify: `https://<your-app>.vercel.app/api/hea
 
 ## API endpoints
 
-- `POST /api/chat` — Career coaching and document analysis. Returns `{ reply }`. No live web search.
+- `POST /api/chat` — Career coaching and document analysis. Returns `{ reply }`. Link-only page fetch when the user pastes a URL (no open-ended web search).
 - `POST /api/upload` — Upload `.docx`, `.pdf`, or `.txt` (max 5MB) and returns extracted text.
 - `POST /api/document/export` — Download chat content as `.docx` or `.pdf`.
 - `POST /api/document/resume` — Generate a downloadable `.docx` from resume text.
@@ -82,10 +82,10 @@ Single OpenAI path for all advisor replies (`gpt-5-mini` via `OPENAI_MODEL` by d
 2. **Uploaded documents** — resume analysis, tailoring, cover letters
 3. **Doc-only generation** — full resume/CV/cover letter output when requested
 
-The advisor does **not** browse the web. For current jobs or local resources it coaches users on search terms, platforms, and filters.
+The advisor does **not** perform open-ended web search. When a user pastes a specific job, resource, or training URL, the server fetches only that link and supplies the page text to the model. For broad job or resource requests without a link, it coaches users on search terms, platforms, and filters and asks them to paste links back.
 
 ## Architecture constraints (by design)
 - No database
 - No auth/login
 - No credentials in the browser
-- No live web search
+- No open-ended web search (user-provided URLs only)

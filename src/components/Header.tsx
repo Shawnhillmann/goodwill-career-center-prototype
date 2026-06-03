@@ -3,12 +3,13 @@ import { ChevronDown } from 'lucide-react'
 import { GoodwillLogo } from './GoodwillLogo'
 import { getUiStrings, supportedLanguages, type SupportedLanguage } from '../uiCopy'
 import { isReadAloudSupported } from '../lib/readAloudSupport'
+import type { AppPage } from '../lib/appNavigation'
 import type { TextSizeLevel } from '../lib/textSize'
 import { TextSizeControl, type TextSizeOption } from './TextSizeControl'
 
 type HeaderProps = {
-  page: 'chat' | 'resources' | 'support'
-  onNavigate: (page: 'chat' | 'resources' | 'support') => void
+  page: AppPage
+  onNavigate: (page: AppPage) => void
   language: SupportedLanguage
   onLanguageChange: (language: SupportedLanguage) => void
   readAloudEnabled: boolean

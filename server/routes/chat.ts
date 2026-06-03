@@ -4,12 +4,22 @@ import { buildSystemPrompt, type ChatMessage } from '../lib/advisorPrompt.js'
 import { createRequestId, logChat, logChat502 } from '../lib/chatLog.js'
 import { sendError } from '../lib/errors.js'
 import { looksLikeUngroundedSearchClaim } from '../lib/hallucinationGuard.js'
+import { augmentMessagesWithFetchedPages } from '../lib/chatMessages.js'
+import { buildWebAccessPrompt, hasSuccessfullyFetchedPage } from '../lib/linkAccessPrompt.js'
+import { buildWebAccessContext, isOpenEndedWebSearchRequest } from '../lib/webAccessPolicy.js'
 import { invokePlainAdvisorChat } from '../lib/plainChat.js'
 import { invokeOpenAiResponsesText, type ResponsesInvokeResult } from '../lib/openaiResponses.js'
 import { streamOpenAiResponsesText } from '../lib/openaiResponsesStream.js'
 import { getOpenAiConfig, missingOpenAiEnv, selectChatModel } from '../lib/openaiModels.js'
 import { endSse, initSse, writeSse } from '../lib/sse.js'
+import { RESUME_OUTPUT_INSTRUCTIONS, RESUME_PREP_INSTRUCTIONS } from '../lib/resumeInstructions.js'
+import { cleanResumeOutput } from '../../shared/resumeParse.js'
 import { shouldStreamAdvisorReply } from '../lib/streamingPolicy.js'
+import {
+  isResumeDocumentTask,
+  isResumePreparationTurn,
+  isExplicitDocumentRequest,
+} from '../lib/resumeTask.js'
 import { isQuickActionId } from '../lib/quickActions.js'
 
 type ChatRequestSource = 'typed' | 'quick_option'
@@ -25,15 +35,6 @@ type ChatRequestBody = {
 
 function isNonEmptyString(v: unknown): v is string {
   return typeof v === 'string' && v.trim().length > 0
-}
-
-function isExplicitDocumentRequest(q: string, hasUploadedDocument: boolean): boolean {
-  const s = q.toLowerCase()
-  const doc = /\b(resume|résumé|cv|curriculum vitae|cover letter)\b/
-  const action = /\b(write|draft|generate|create|format|rewrite|revise|tailor|update|improve|edit|fix)\b/
-  if (!doc.test(s) || (!action.test(s) && !/\btailored\b/.test(s))) return false
-  if (!hasUploadedDocument && /\b(write|create|draft|build)\s+(my\s+)?(resume|cv)\b/.test(s)) return false
-  return true
 }
 
 function normalizeSource(source: unknown): ChatRequestSource {
@@ -79,13 +80,33 @@ chatRouter.post('/', async (req, res) => {
 
   const lastUser = [...messages].reverse().find((m) => m.role === 'user')?.content ?? ''
   const hasUploadedDocument = Boolean(body.uploadedDocumentText?.trim())
-  const docOnly = Boolean(lastUser && isExplicitDocumentRequest(lastUser, hasUploadedDocument))
+  const resumeOnly = Boolean(
+    lastUser && isResumeDocumentTask(messages, lastUser, hasUploadedDocument, quickAction),
+  )
+  const resumePrep = Boolean(
+    lastUser && isResumePreparationTurn(messages, lastUser, hasUploadedDocument, quickAction),
+  )
+  const coverLetterOnly = Boolean(
+    lastUser && isExplicitDocumentRequest(lastUser, hasUploadedDocument) && /\bcover letter\b/i.test(lastUser),
+  )
+  const docOnly = resumeOnly || coverLetterOnly
 
-  const systemDocOnly = docOnly
-    ? '\n\nIf the user requests a resume, CV, cover letter, or any written document, output ONLY the document text. Do NOT include any introduction, preface, commentary, or closing lines. Do not ask questions. The output must start immediately with the document content.'
-    : ''
+  const systemDocOnly = resumeOnly
+    ? `\n\n${ RESUME_OUTPUT_INSTRUCTIONS }`
+    : resumePrep
+      ? `\n\n${ RESUME_PREP_INSTRUCTIONS }`
+      : coverLetterOnly
+        ? '\n\nIf the user requests a cover letter, output ONLY the cover letter text. No introduction, commentary, or closing lines. Start with the letter content immediately.'
+        : ''
 
-  const instructions = buildSystemPrompt(body.language, body.uploadedDocumentText) + systemDocOnly
+  const webAccess = await buildWebAccessContext(lastUser)
+  const linkFetched = hasSuccessfullyFetchedPage(webAccess.pages)
+  const webAccessPrompt = buildWebAccessPrompt(webAccess.webFetchEnabled, webAccess.pages)
+  const instructions =
+    buildSystemPrompt(body.language, body.uploadedDocumentText, webAccessPrompt, { linkFetched }) + systemDocOnly
+  const modelMessages = linkFetched ? augmentMessagesWithFetchedPages(messages, webAccess.pages) : messages
+  const hasFetchedPage = linkFetched
+  const chatMaxOutputTokens = hasUploadedDocument || hasFetchedPage ? 900 : 600
 
   logChat('chat_request', {
     requestId,
@@ -96,6 +117,14 @@ chatRouter.post('/', async (req, res) => {
     lastUserPreview: lastUser.slice(0, 80),
     uploadedDoc: hasUploadedDocument,
     docOnly,
+    webFetchEnabled: webAccess.webFetchEnabled,
+    userProvidedUrls: webAccess.userProvidedUrls.join(', ') || undefined,
+    pagesFetchedOk: webAccess.pages.filter((p) => p.ok).length,
+    pageFetchErrors: webAccess.pages
+      .filter((p) => !p.ok)
+      .map((p) => p.error)
+      .join('; ') || undefined,
+    openEndedSearchRequest: isOpenEndedWebSearchRequest(lastUser),
   })
 
   const { apiKey } = getOpenAiConfig()
@@ -106,15 +135,12 @@ chatRouter.post('/', async (req, res) => {
   const useStream = shouldStreamAdvisorReply({
     clientWantsStream: Boolean(body.stream),
     docOnly,
-    userMessage: lastUser,
-    quickAction,
-    hasUploadedDocument,
   })
 
   if (useStream) {
     initSse(res)
     const model = selectChatModel({ hasUploadedDocument })
-    const maxOutputTokens = hasUploadedDocument ? 800 : 600
+    const maxOutputTokens = chatMaxOutputTokens
     const streamStarted = Date.now()
 
     try {
@@ -123,7 +149,7 @@ chatRouter.post('/', async (req, res) => {
         apiKey,
         model,
         instructions,
-        messages,
+        messages: modelMessages,
         maxOutputTokens,
         reasoningEffort: 'minimal',
         onDelta: (chunk) => {
@@ -132,7 +158,7 @@ chatRouter.post('/', async (req, res) => {
         },
       })
 
-      reply = result.text.trim()
+      reply = resumeOnly ? cleanResumeOutput(result.text) : result.text.trim()
 
       if (reply && looksLikeUngroundedSearchClaim(reply)) {
         logChat('ungrounded_listing_claim', { requestId, model, path: 'chat' })
@@ -205,27 +231,27 @@ chatRouter.post('/', async (req, res) => {
   let lastModelResult: ResponsesInvokeResult | null = null
 
   try {
-    if (docOnly) {
+    if (resumeOnly || coverLetterOnly) {
       model = selectChatModel({ hasUploadedDocument: true })
       const docStarted = Date.now()
       const docResult = await invokeOpenAiResponsesText({
         apiKey,
         model,
         instructions,
-        messages,
+        messages: modelMessages,
         maxOutputTokens: 900,
         reasoningEffort: 'minimal',
       })
       modelCallMs = Date.now() - docStarted
       lastModelResult = docResult
-      reply = docResult.text.trim()
+      reply = resumeOnly ? cleanResumeOutput(docResult.text) : docResult.text.trim()
     } else {
       const chat = await invokePlainAdvisorChat({
         apiKey,
         instructions,
-        messages,
+        messages: modelMessages,
         hasUploadedDocument,
-        maxOutputTokens: hasUploadedDocument ? 800 : 600,
+        maxOutputTokens: chatMaxOutputTokens,
         requestId,
       })
       reply = chat.reply

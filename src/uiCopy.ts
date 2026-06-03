@@ -20,7 +20,9 @@ type UiStrings = {
   liveSupportZipLabel: string
   liveSupportZipPlaceholder: string
   liveSupportZipHint: string
+  liveSupportZipUnknown: string
   liveSupportNearest: string
+  liveSupportMilesAway: string
   backToChat: string
   resourcesTitle: string
   resourcesIntro: string
@@ -56,6 +58,14 @@ type UiStrings = {
   footerTerms: string
   footerAccessibility: string
   resourceComingSoon: string
+  exploreSectionAria: string
+  exploreResourcesTitle: string
+  exploreResourcesDescription: string
+  exploreResourcesImageAlt: string
+  exploreSupportTitle: string
+  exploreSupportDescription: string
+  exploreSupportImageAlt: string
+  exploreCardCta: string
 }
 
 const uiStrings: Record<SupportedLanguage, UiStrings> = {
@@ -69,7 +79,9 @@ const uiStrings: Record<SupportedLanguage, UiStrings> = {
     liveSupportZipLabel: 'Your ZIP code',
     liveSupportZipPlaceholder: 'Enter ZIP code',
     liveSupportZipHint: 'Enter your ZIP code to see the closest centers first.',
+    liveSupportZipUnknown: 'We could not find that ZIP code. Try another U.S. ZIP, or call a center below.',
     liveSupportNearest: 'Nearest to you',
+    liveSupportMilesAway: '%s mi away',
     backToChat: 'Back to chat',
     resourcesTitle: 'Career resources',
     resourcesIntro: 'Short videos, slideshows, and guides you can use with a coach or on your own.',
@@ -107,6 +119,16 @@ const uiStrings: Record<SupportedLanguage, UiStrings> = {
     footerTerms: 'Terms of Use',
     footerAccessibility: 'Accessibility',
     resourceComingSoon: 'Coming soon',
+    exploreSectionAria: 'More ways to get help',
+    exploreResourcesTitle: 'Resources',
+    exploreResourcesDescription:
+      'Short videos, slideshows, and guides you can use with a coach or on your own.',
+    exploreResourcesImageAlt: 'Career learning resources',
+    exploreSupportTitle: 'Live Support',
+    exploreSupportDescription:
+      'Find career centers near you, explore virtual coaching, and get in-person help.',
+    exploreSupportImageAlt: 'Career center locations',
+    exploreCardCta: 'Explore',
   },
   es: {
     careerAdvisor: 'Asesor de carreras',
@@ -118,7 +140,9 @@ const uiStrings: Record<SupportedLanguage, UiStrings> = {
     liveSupportZipLabel: 'Tu código postal',
     liveSupportZipPlaceholder: 'Ingresa tu código postal',
     liveSupportZipHint: 'Ingresa tu código postal para ver primero los centros más cercanos.',
+    liveSupportZipUnknown: 'No encontramos ese código postal. Prueba otro ZIP de EE. UU. o llama a un centro.',
     liveSupportNearest: 'Más cercano a ti',
+    liveSupportMilesAway: 'A %s mi',
     backToChat: 'Volver al chat',
     resourcesTitle: 'Recursos de carrera',
     resourcesIntro: 'Videos cortos, presentaciones y guías para usar con un coach o por tu cuenta.',
@@ -156,6 +180,16 @@ const uiStrings: Record<SupportedLanguage, UiStrings> = {
     footerTerms: 'Términos de uso',
     footerAccessibility: 'Accesibilidad',
     resourceComingSoon: 'Próximamente',
+    exploreSectionAria: 'Más formas de obtener ayuda',
+    exploreResourcesTitle: 'Recursos',
+    exploreResourcesDescription:
+      'Videos cortos, presentaciones y guías para usar con un coach o por tu cuenta.',
+    exploreResourcesImageAlt: 'Recursos de aprendizaje profesional',
+    exploreSupportTitle: 'Apoyo en vivo',
+    exploreSupportDescription:
+      'Encuentra centros de carrera cerca de ti, coaching virtual y ayuda en persona.',
+    exploreSupportImageAlt: 'Ubicaciones de centros de carrera',
+    exploreCardCta: 'Explorar',
   },
   it: {
     careerAdvisor: 'Consulente di carriera',
@@ -167,7 +201,9 @@ const uiStrings: Record<SupportedLanguage, UiStrings> = {
     liveSupportZipLabel: 'Il tuo CAP',
     liveSupportZipPlaceholder: 'Inserisci il CAP',
     liveSupportZipHint: 'Inserisci il CAP per vedere per primi i centri più vicini.',
+    liveSupportZipUnknown: 'CAP non trovato. Prova un altro ZIP statunitense o chiama un centro.',
     liveSupportNearest: 'Più vicino a te',
+    liveSupportMilesAway: '%s mi di distanza',
     backToChat: 'Torna alla chat',
     resourcesTitle: 'Risorse per la carriera',
     resourcesIntro: 'Video brevi, presentazioni e guide da usare con un coach o in autonomia.',
@@ -205,6 +241,16 @@ const uiStrings: Record<SupportedLanguage, UiStrings> = {
     footerTerms: 'Termini di utilizzo',
     footerAccessibility: 'Accessibilità',
     resourceComingSoon: 'In arrivo',
+    exploreSectionAria: 'Altri modi per ricevere aiuto',
+    exploreResourcesTitle: 'Risorse',
+    exploreResourcesDescription:
+      'Video brevi, presentazioni e guide da usare con un coach o in autonomia.',
+    exploreResourcesImageAlt: 'Risorse per l\'apprendimento professionale',
+    exploreSupportTitle: 'Supporto dal vivo',
+    exploreSupportDescription:
+      'Trova centri per la carriera vicino a te, coaching virtuale e supporto di persona.',
+    exploreSupportImageAlt: 'Sedi dei centri per la carriera',
+    exploreCardCta: 'Esplora',
   },
   ht: {
     careerAdvisor: 'Konseye karyè',
@@ -216,7 +262,9 @@ const uiStrings: Record<SupportedLanguage, UiStrings> = {
     liveSupportZipLabel: 'Kòd postal ou',
     liveSupportZipPlaceholder: 'Antre kòd postal la',
     liveSupportZipHint: 'Antre kòd postal ou pou w wè sant ki pi pre yo an premye.',
+    liveSupportZipUnknown: 'Nou pa jwenn kòd postal sa a. Eseye yon lòt ZIP Etazini oswa rele yon sant.',
     liveSupportNearest: 'Ki pi pre ou',
+    liveSupportMilesAway: '%s mi',
     backToChat: 'Tounen nan chat la',
     resourcesTitle: 'Resous pou karyè',
     resourcesIntro: 'Videyo kout, dyapo, ak gid ou ka itilize ak yon antrenè oswa poukont ou.',
@@ -254,6 +302,16 @@ const uiStrings: Record<SupportedLanguage, UiStrings> = {
     footerTerms: 'Kondisyon itilizasyon',
     footerAccessibility: 'Aksesibilite',
     resourceComingSoon: 'Byento',
+    exploreSectionAria: 'Lòt fason pou jwenn èd',
+    exploreResourcesTitle: 'Resous',
+    exploreResourcesDescription:
+      'Videyo kout, dyapo, ak gid ou ka itilize ak yon antrenè oswa poukont ou.',
+    exploreResourcesImageAlt: 'Resous aprantisaj karyè',
+    exploreSupportTitle: 'Sipò an dirèk',
+    exploreSupportDescription:
+      'Jwenn sant karyè tou pre ou, coaching vityèl, ak èd an pèsòn.',
+    exploreSupportImageAlt: 'Kote sant karyè yo',
+    exploreCardCta: 'Eksplore',
   },
   pl: {
     careerAdvisor: 'Doradca kariery',
@@ -265,7 +323,9 @@ const uiStrings: Record<SupportedLanguage, UiStrings> = {
     liveSupportZipLabel: 'Twój kod pocztowy',
     liveSupportZipPlaceholder: 'Wpisz kod pocztowy',
     liveSupportZipHint: 'Wpisz kod pocztowy, aby najpierw zobaczyć najbliższe centra.',
+    liveSupportZipUnknown: 'Nie znaleźliśmy tego kodu pocztowego. Spróbuj inny ZIP w USA lub zadzwoń do centrum.',
     liveSupportNearest: 'Najbliżej Ciebie',
+    liveSupportMilesAway: '%s mi stąd',
     backToChat: 'Wróć do czatu',
     resourcesTitle: 'Materiały o karierze',
     resourcesIntro: 'Krótkie filmy, prezentacje i poradniki do użycia z doradcą lub samodzielnie.',
@@ -303,6 +363,16 @@ const uiStrings: Record<SupportedLanguage, UiStrings> = {
     footerTerms: 'Warunki korzystania',
     footerAccessibility: 'Ułatwienia dostępu',
     resourceComingSoon: 'Wkrótce',
+    exploreSectionAria: 'Więcej sposobów na uzyskanie pomocy',
+    exploreResourcesTitle: 'Materiały',
+    exploreResourcesDescription:
+      'Krótkie filmy, prezentacje i poradniki do użycia z doradcą lub samodzielnie.',
+    exploreResourcesImageAlt: 'Materiały do nauki zawodowej',
+    exploreSupportTitle: 'Wsparcie na żywo',
+    exploreSupportDescription:
+      'Znajdź centra kariery w pobliżu, coaching wirtualny i pomoc osobiście.',
+    exploreSupportImageAlt: 'Lokalizacje centrów kariery',
+    exploreCardCta: 'Zobacz',
   },
   ru: {
     careerAdvisor: 'Консультант по карьере',
@@ -314,7 +384,9 @@ const uiStrings: Record<SupportedLanguage, UiStrings> = {
     liveSupportZipLabel: 'Ваш почтовый индекс',
     liveSupportZipPlaceholder: 'Введите индекс',
     liveSupportZipHint: 'Введите индекс, чтобы сначала увидеть ближайшие центры.',
+    liveSupportZipUnknown: 'Индекс не найден. Попробуйте другой почтовый индекс США или позвоните в центр.',
     liveSupportNearest: 'Ближайший к вам',
+    liveSupportMilesAway: '%s миль',
     backToChat: 'Назад в чат',
     resourcesTitle: 'Ресурсы по карьере',
     resourcesIntro: 'Короткие видео, презентации и руководства для работы с консультантом или самостоятельно.',
@@ -352,6 +424,16 @@ const uiStrings: Record<SupportedLanguage, UiStrings> = {
     footerTerms: 'Условия использования',
     footerAccessibility: 'Доступность',
     resourceComingSoon: 'Скоро',
+    exploreSectionAria: 'Другие способы получить помощь',
+    exploreResourcesTitle: 'Материалы',
+    exploreResourcesDescription:
+      'Короткие видео, презентации и руководства для работы с консультантом или самостоятельно.',
+    exploreResourcesImageAlt: 'Материалы для карьерного обучения',
+    exploreSupportTitle: 'Живая поддержка',
+    exploreSupportDescription:
+      'Найдите карьерные центры рядом, виртуальный коучинг и очную помощь.',
+    exploreSupportImageAlt: 'Расположение карьерных центров',
+    exploreCardCta: 'Открыть',
   },
   ar: {
     careerAdvisor: 'المستشار المهني',
@@ -363,7 +445,9 @@ const uiStrings: Record<SupportedLanguage, UiStrings> = {
     liveSupportZipLabel: 'الرمز البريدي',
     liveSupportZipPlaceholder: 'أدخل الرمز البريدي',
     liveSupportZipHint: 'أدخل الرمز البريدي لعرض أقرب المراكز أولًا.',
+    liveSupportZipUnknown: 'لم نعثر على هذا الرمز البريدي. جرّب رمزًا أمريكيًا آخر أو اتصل بأحد المراكز.',
     liveSupportNearest: 'الأقرب إليك',
+    liveSupportMilesAway: 'على بُعد %s ميل',
     backToChat: 'العودة إلى الدردشة',
     resourcesTitle: 'موارد مهنية',
     resourcesIntro: 'فيديوهات قصيرة وعروض شرائح وأدلة يمكنك استخدامها مع مدرب أو بمفردك.',
@@ -401,6 +485,16 @@ const uiStrings: Record<SupportedLanguage, UiStrings> = {
     footerTerms: 'شروط الاستخدام',
     footerAccessibility: 'إمكانية الوصول',
     resourceComingSoon: 'قريبًا',
+    exploreSectionAria: 'طرق أخرى للحصول على المساعدة',
+    exploreResourcesTitle: 'الموارد',
+    exploreResourcesDescription:
+      'فيديوهات قصيرة وعروض شرائح وأدلة يمكنك استخدامها مع مدرب أو بمفردك.',
+    exploreResourcesImageAlt: 'موارد التعلم المهني',
+    exploreSupportTitle: 'دعم مباشر',
+    exploreSupportDescription:
+      'اعثر على مراكز المهنة القريبة والتدريب الافتراضي والمساعدة الشخصية.',
+    exploreSupportImageAlt: 'مواقع مراكز المهنة',
+    exploreCardCta: 'استكشف',
   },
 }
 

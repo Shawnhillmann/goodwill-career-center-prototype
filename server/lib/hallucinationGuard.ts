@@ -1,8 +1,8 @@
-const URL_IN_TEXT = /https?:\/\/[^\s)\]>]+/gi
+import { extractUserProvidedUrls } from '../../shared/urlDetect.js'
 
+/** @deprecated Prefer extractUserProvidedUrls — kept for reply link counting. */
 export function extractHttpLinks(text: string): string[] {
-  const matches = text.match(URL_IN_TEXT) ?? []
-  return [...new Set(matches.map((u) => u.replace(/[.,;:!?)]+$/, '')))]
+  return extractUserProvidedUrls(text)
 }
 
 export function looksLikePlaceholderTemplate(text: string): boolean {

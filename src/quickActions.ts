@@ -1,19 +1,19 @@
 import type { SupportedLanguage } from './uiCopy'
 
 export type QuickActionId =
-  | 'find_jobs'
-  | 'career_options'
-  | 'resume_review'
-  | 'interview_prep'
-  | 'build_skills'
+  | 'explore_careers'
+  | 'build_resume'
+  | 'help_apply'
+  | 'practice_interviews'
+  | 'career_plan'
   | 'local_resources'
 
 export const QUICK_ACTION_ORDER: QuickActionId[] = [
-  'find_jobs',
-  'career_options',
-  'resume_review',
-  'interview_prep',
-  'build_skills',
+  'explore_careers',
+  'build_resume',
+  'help_apply',
+  'practice_interviews',
+  'career_plan',
   'local_resources',
 ]
 
@@ -25,269 +25,269 @@ type QuickActionCopy = {
 
 const quickActionCopy: Record<SupportedLanguage, Record<QuickActionId, QuickActionCopy>> = {
   en: {
-    find_jobs: {
-      label: 'Find Jobs',
-      ariaLabel: 'Find Jobs — get help searching for work',
+    explore_careers: {
+      label: 'Explore Careers',
+      ariaLabel: 'Explore Careers — discover roles that may fit you',
       starter:
-        'I would like help finding a job. Please start by learning about my background, interests, experience, and goals so you can recommend appropriate career paths and next steps.',
+        'I would like help exploring careers that may fit me. Ask me about my interests, strengths, work history, education, and preferences. Suggest careers that might suit me and explain why—through conversation and coaching only unless I ask for a document.',
     },
-    career_options: {
-      label: 'Career Options',
-      ariaLabel: 'Career Options — explore careers that may fit you',
+    build_resume: {
+      label: 'Build My Resume',
+      ariaLabel: 'Build My Resume — get coaching on your resume or CV',
       starter:
-        'I would like help exploring career options. Ask me questions about my interests, strengths, work history, education, and preferences so you can suggest careers that may fit me.',
+        'I would like help with my resume. If I have not uploaded a resume, ask me to upload one or share my work history. Coach me with specific feedback section by section. Reply in conversation only unless I clearly ask you to write or rewrite my full resume.',
     },
-    resume_review: {
-      label: 'Resume Review',
-      ariaLabel: 'Resume Review — improve your resume or CV',
+    help_apply: {
+      label: 'Help Me Apply',
+      ariaLabel: 'Help Me Apply — guidance on job search and applications',
       starter:
-        'I would like help with my resume. If I have not uploaded a resume, ask me to upload one or provide my experience. Then help me improve it and position myself for relevant jobs.',
+        'I would like help applying for jobs. Ask which roles I am targeting and about my background. Guide me on search strategies, applications, follow-up, and preparing my materials—step by step through conversation.',
     },
-    interview_prep: {
+    practice_interviews: {
       label: 'Interview Prep',
-      ariaLabel: 'Interview Prep — practice and prepare for interviews',
+      ariaLabel: 'Interview Prep — prepare and practice for interviews',
       starter:
-        'I would like help preparing for interviews. Ask what type of job I am pursuing and then provide coaching, common interview questions, and practice opportunities.',
+        'I would like to practice interviews. Ask what kind of role I am pursuing, then offer coaching, common questions, and practice one question at a time.',
     },
-    build_skills: {
-      label: 'Build Skills',
-      ariaLabel: 'Build Skills — identify skills and training to grow',
+    career_plan: {
+      label: 'Career Planning',
+      ariaLabel: 'Career Planning — outline goals and next steps',
       starter:
-        'I would like help identifying skills that would improve my career opportunities. Ask about my goals and current experience, then recommend practical skills, certifications, or training paths.',
+        'I would like help creating a career plan. Ask about my goals, timeline, constraints, and current situation. Help me outline realistic steps and milestones through conversation.',
     },
     local_resources: {
       label: 'Local Resources',
-      ariaLabel: 'Local Resources — find career support near you',
+      ariaLabel: 'Local Resources — career support near you',
       starter:
-        'I would like help identifying local career and workforce resources. Ask for my city, state, or ZIP code, then explain what types of organizations, programs, and support services may be available to help me.',
+        'I would like help finding local career and workforce resources. Ask for my city, state, or ZIP code, then describe types of organizations, programs, and support that may be available near me.',
     },
   },
   es: {
-    find_jobs: {
-      label: 'Buscar empleo',
-      ariaLabel: 'Buscar empleo — obtener ayuda para encontrar trabajo',
+    explore_careers: {
+      label: 'Explorar carreras',
+      ariaLabel: 'Explorar carreras — descubre profesiones que pueden encajar contigo',
       starter:
-        'Me gustaría recibir ayuda para encontrar trabajo. Empieza conociendo mi formación, intereses, experiencia y metas para que puedas recomendarme trayectorias profesionales y próximos pasos adecuados.',
+        'Me gustaría explorar carreras que puedan encajar conmigo. Pregúntame sobre mis intereses, fortalezas, historial laboral, estudios y preferencias. Sugiere profesiones que me convengan y explica por qué—solo mediante conversación y orientación, a menos que pida un documento.',
     },
-    career_options: {
-      label: 'Opciones de carrera',
-      ariaLabel: 'Opciones de carrera — explorar profesiones que encajen contigo',
+    build_resume: {
+      label: 'Armar mi CV',
+      ariaLabel: 'Armar mi CV — recibe orientación sobre tu currículum',
       starter:
-        'Me gustaría explorar opciones de carrera. Hazme preguntas sobre mis intereses, fortalezas, historial laboral, estudios y preferencias para sugerirme profesiones que puedan encajar conmigo.',
+        'Me gustaría ayuda con mi currículum. Si no he subido uno, pídeme que lo suba o que comparta mi historial laboral. Oriéntame con comentarios específicos sección por sección. Responde solo en conversación, a menos que pida claramente que redactes o reescribas mi CV completo.',
     },
-    resume_review: {
-      label: 'Revisión de CV',
-      ariaLabel: 'Revisión de CV — mejorar tu currículum',
+    help_apply: {
+      label: 'Ayúdame a postularme',
+      ariaLabel: 'Ayúdame a postularme — orientación para buscar trabajo y aplicar',
       starter:
-        'Me gustaría ayuda con mi currículum. Si no he subido uno, pídeme que lo suba o que comparta mi experiencia. Luego ayúdame a mejorarlo y posicionarme para empleos relevantes.',
+        'Me gustaría ayuda para postularme a empleos. Pregunta a qué puestos apunto y sobre mi trayectoria. Guíame en estrategias de búsqueda, solicitudes, seguimiento y preparación de materiales—paso a paso en conversación.',
     },
-    interview_prep: {
-      label: 'Preparación para entrevistas',
-      ariaLabel: 'Preparación para entrevistas — practicar y prepararte',
+    practice_interviews: {
+      label: 'Prep. entrevistas',
+      ariaLabel: 'Prep. entrevistas — prepararte y practicar para entrevistas',
       starter:
-        'Me gustaría prepararme para entrevistas. Pregunta qué tipo de empleo busco y luego ofréceme orientación, preguntas frecuentes y oportunidades de práctica.',
+        'Me gustaría practicar entrevistas. Pregunta qué tipo de puesto busco y luego ofrece orientación, preguntas frecuentes y práctica de una pregunta a la vez.',
     },
-    build_skills: {
-      label: 'Desarrollar habilidades',
-      ariaLabel: 'Desarrollar habilidades — identificar formación para crecer',
+    career_plan: {
+      label: 'Planificación',
+      ariaLabel: 'Planificación — definir metas y próximos pasos de carrera',
       starter:
-        'Me gustaría identificar habilidades que mejoren mis oportunidades profesionales. Pregunta por mis metas y experiencia actual, y recomiéndame habilidades prácticas, certificaciones o rutas de formación.',
+        'Me gustaría ayuda para crear un plan de carrera. Pregunta sobre mis metas, plazos, limitaciones y situación actual. Ayúdame a definir pasos y hitos realistas mediante conversación.',
     },
     local_resources: {
       label: 'Recursos locales',
-      ariaLabel: 'Recursos locales — encontrar apoyo profesional cerca de ti',
+      ariaLabel: 'Recursos locales — apoyo profesional cerca de ti',
       starter:
-        'Me gustaría identificar recursos locales de empleo y desarrollo profesional. Pregunta por mi ciudad, estado o código postal y explica qué organizaciones, programas y servicios de apoyo pueden estar disponibles para ayudarme.',
+        'Me gustaría encontrar recursos locales de empleo y desarrollo profesional. Pregunta por mi ciudad, estado o código postal y describe tipos de organizaciones, programas y apoyo que puedan estar disponibles cerca de mí.',
     },
   },
   it: {
-    find_jobs: {
-      label: 'Cerca lavoro',
-      ariaLabel: 'Cerca lavoro — ricevi aiuto per trovare un impiego',
+    explore_careers: {
+      label: 'Esplora carriere',
+      ariaLabel: 'Esplora carriere — scopri professioni adatte a te',
       starter:
-        'Vorrei aiuto per trovare lavoro. Inizia conoscendo il mio background, i miei interessi, la mia esperienza e i miei obiettivi, così potrai consigliarmi percorsi di carriera e prossimi passi appropriati.',
+        'Vorrei esplorare carriere che possano adattarsi a me. Fammi domande su interessi, punti di forza, esperienza lavorativa, formazione e preferenze. Suggerisci professioni adatte e spiega perché—solo tramite conversazione e coaching, a meno che non chieda un documento.',
     },
-    career_options: {
-      label: 'Opzioni di carriera',
-      ariaLabel: 'Opzioni di carriera — esplora professioni adatte a te',
+    build_resume: {
+      label: 'Crea il mio CV',
+      ariaLabel: 'Crea il mio CV — ricevi coaching sul curriculum',
       starter:
-        'Vorrei esplorare opzioni di carriera. Fammi domande su interessi, punti di forza, esperienza lavorativa, formazione e preferenze, così potrai suggerirmi professioni adatte a me.',
+        'Vorrei aiuto con il mio curriculum. Se non ne ho caricato uno, chiedimi di caricarlo o di descrivere la mia esperienza lavorativa. Guidami con feedback specifici sezione per sezione. Rispondi solo in conversazione, a meno che non chieda chiaramente di scrivere o riscrivere l’intero CV.',
     },
-    resume_review: {
-      label: 'Revisione CV',
-      ariaLabel: 'Revisione CV — migliora il tuo curriculum',
+    help_apply: {
+      label: 'Aiutami a candidarmi',
+      ariaLabel: 'Aiutami a candidarmi — guida per cercare lavoro e candidarsi',
       starter:
-        'Vorrei aiuto con il mio curriculum. Se non ne ho caricato uno, chiedimi di caricarlo o di descrivere la mia esperienza. Poi aiutami a migliorarlo e a posizionarmi per le offerte di lavoro pertinenti.',
+        'Vorrei aiuto per candidarmi a lavoro. Chiedi a quali ruoli mi rivolgo e il mio background. Guidami su strategie di ricerca, candidature, follow-up e preparazione dei materiali—passo dopo passo in conversazione.',
     },
-    interview_prep: {
-      label: 'Preparazione colloquio',
-      ariaLabel: 'Preparazione colloquio — esercitati e preparati',
+    practice_interviews: {
+      label: 'Prep. colloqui',
+      ariaLabel: 'Prep. colloqui — preparati e allenati per i colloqui',
       starter:
-        'Vorrei prepararmi ai colloqui. Chiedimi che tipo di lavoro sto cercando e poi offrimi coaching, domande comuni e opportunità di pratica.',
+        'Vorrei esercitarmi ai colloqui. Chiedimi che tipo di ruolo sto cercando, poi offri coaching, domande comuni e pratica una domanda alla volta.',
     },
-    build_skills: {
-      label: 'Sviluppa competenze',
-      ariaLabel: 'Sviluppa competenze — individua formazione per crescere',
+    career_plan: {
+      label: 'Pianificazione',
+      ariaLabel: 'Pianificazione — definisci obiettivi e passi di carriera',
       starter:
-        'Vorrei individuare competenze che possano migliorare le mie opportunità di carriera. Chiedimi obiettivi ed esperienza attuale, poi consigliami competenze pratiche, certificazioni o percorsi formativi.',
+        'Vorrei aiuto per creare un piano di carriera. Chiedi obiettivi, tempistiche, vincoli e situazione attuale. Aiutami a definire passi e traguardi realistici tramite conversazione.',
     },
     local_resources: {
       label: 'Risorse locali',
-      ariaLabel: 'Risorse locali — trova supporto professionale vicino a te',
+      ariaLabel: 'Risorse locali — supporto professionale vicino a te',
       starter:
-        'Vorrei individuare risorse locali per la carriera e il lavoro. Chiedimi città, stato o CAP, poi spiegami quali organizzazioni, programmi e servizi di supporto potrebbero essere disponibili per aiutarmi.',
+        'Vorrei trovare risorse locali per carriera e lavoro. Chiedimi città, stato o CAP, poi descrivi tipi di organizzazioni, programmi e supporto disponibili vicino a me.',
     },
   },
   ht: {
-    find_jobs: {
-      label: 'Jwenn travay',
-      ariaLabel: 'Jwenn travay — jwenn èd pou chèche travay',
+    explore_careers: {
+      label: 'Eksplore karyè',
+      ariaLabel: 'Eksplore karyè — dekouvri pwofesyon ki ka adapte avèk ou',
       starter:
-        'Mwen ta renmen jwenn èd pou jwenn travay. Kòmanse pa aprann sou background mwen, enterè mwen, eksperyans mwen, ak objektif mwen pou ou ka rekòmande chemen karyè ak pwochen etap ki apwopriye.',
+        'Mwen ta renmen eksplore karyè ki ka adapte avèk mwen. Poze m kesyon sou enterè mwen, fòs mwen, istwa travay, edikasyon, ak preferans mwen. Sijere pwofesyon ki ka bon pou mwen epi eksplike poukisa—sèlman nan konvèsasyon ak coaching, sof si m mande yon dokiman.',
     },
-    career_options: {
-      label: 'Opsyon karyè',
-      ariaLabel: 'Opsyon karyè — eksplore pwofesyon ki ka adapte avèk ou',
+    build_resume: {
+      label: 'Konstwi rezime mwen',
+      ariaLabel: 'Konstwi rezime mwen — jwenn coaching sou rezime ou',
       starter:
-        'Mwen ta renmen eksplore opsyon karyè. Poze m kesyon sou enterè mwen, fòs mwen, istwa travay mwen, edikasyon mwen, ak preferans mwen pou ou ka sijere pwofesyon ki ka adapte avèk mwen.',
+        'Mwen ta renmen èd ak rezime mwen. Si mwen pa telechaje yon rezime, mande m pou m telechaje youn oswa pataje istwa travay mwen. Gid m ak fidbak espesifik seksyon pa seksyon. Reponn sèlman nan konvèsasyon, sof si m mande klèman pou w ekri oswa reekri rezime konplè mwen.',
     },
-    resume_review: {
-      label: 'Revizyon rezime',
-      ariaLabel: 'Revizyon rezime — amelyore CV ou',
+    help_apply: {
+      label: 'Ede m aplike',
+      ariaLabel: 'Ede m aplike — gid pou chèche travay ak aplike',
       starter:
-        'Mwen ta renmen èd ak rezime mwen. Si mwen pa telechaje yon rezime, mande m pou m telechaje youn oswa bay eksperyans mwen. Apre sa, ede m amelyore li epi pozisyone tèt mwen pou travay ki enpòtan.',
+        'Mwen ta renmen èd pou aplike pou travay. Mande ki wòl m ap vize ak sou background mwen. Gid m sou estrateji rechèch, aplikasyon, swivi, ak preparasyon materyèl—etap pa etap nan konvèsasyon.',
     },
-    interview_prep: {
-      label: 'Prep entèvyou',
-      ariaLabel: 'Prep entèvyou — pratike epi prepare pou entèvyou',
+    practice_interviews: {
+      label: 'Prep. entèvyou',
+      ariaLabel: 'Prep. entèvyou — prepare epi pratike pou entèvyou',
       starter:
-        'Mwen ta renmen prepare pou entèvyou. Mande ki kalite travay m ap chèche, epi bay m coaching, kesyon komen, ak opòtinite pratik.',
+        'Mwen ta renmen pratike entèvyou. Mande ki kalite wòl m ap chèche, epi ofri coaching, kesyon komen, ak pratik yon kesyon nan yon moman.',
     },
-    build_skills: {
-      label: 'Devlope konpetans',
-      ariaLabel: 'Devlope konpetans — idantifye fòmasyon pou grandi',
+    career_plan: {
+      label: 'Planifikasyon',
+      ariaLabel: 'Planifikasyon — defini objektif ak pwochen etap karyè',
       starter:
-        'Mwen ta renmen idantifye konpetans ki ta amelyore opòtinite karyè mwen. Mande sou objektif mwen ak eksperyans aktyèl mwen, epi rekòmande konpetans pratik, sètifikasyon, oswa chemen fòmasyon.',
+        'Mwen ta renmen èd pou kreye yon plan karyè. Mande sou objektif mwen, delè, limit, ak sitiyasyon aktyèl mwen. Ede m defini etap ak etap reyalis atravè konvèsasyon.',
     },
     local_resources: {
       label: 'Resous lokal',
-      ariaLabel: 'Resous lokal — jwenn sipò karyè tou pre ou',
+      ariaLabel: 'Resous lokal — sipò karyè tou pre ou',
       starter:
-        'Mwen ta renmen idantifye resous lokal pou karyè ak travay. Mande vil, eta, oswa kòd postal mwen, epi eksplike ki kalite òganizasyon, pwogram, ak sèvis sipò ki ka disponib pou ede m.',
+        'Mwen ta renmen jwenn resous lokal pou karyè ak travay. Mande vil, eta, oswa kòd postal mwen, epi eksplike kalite òganizasyon, pwogram, ak sipò ki ka disponib tou pre m.',
     },
   },
   pl: {
-    find_jobs: {
-      label: 'Znajdź pracę',
-      ariaLabel: 'Znajdź pracę — uzyskaj pomoc w poszukiwaniu pracy',
+    explore_careers: {
+      label: 'Poznaj kariery',
+      ariaLabel: 'Poznaj kariery — odkryj zawody, które mogą Ci pasować',
       starter:
-        'Chciałbym/Chciałabym uzyskać pomoc w znalezieniu pracy. Zacznij od poznania mojego doświadczenia, zainteresowań, historii zawodowej i celów, aby móc polecić odpowiednie ścieżki kariery i kolejne kroki.',
+        'Chciałbym/Chciałabym poznać kariery, które mogą do mnie pasować. Zadaj pytania o zainteresowania, mocne strony, doświadczenie, wykształcenie i preferencje. Zaproponuj zawody i wyjaśnij dlaczego—wyłącznie w rozmowie i coachingu, chyba że poproszę o dokument.',
     },
-    career_options: {
-      label: 'Opcje kariery',
-      ariaLabel: 'Opcje kariery — poznaj zawody, które do Ciebie pasują',
+    build_resume: {
+      label: 'Zbuduj moje CV',
+      ariaLabel: 'Zbuduj moje CV — uzyskaj wskazówki dotyczące CV',
       starter:
-        'Chciałbym/Chciałabym poznać opcje kariery. Zadaj mi pytania o zainteresowania, mocne strony, doświadczenie zawodowe, wykształcenie i preferencje, aby zaproponować zawody, które mogą do mnie pasować.',
+        'Chciałbym/Chciałabym uzyskać pomoc z CV. Jeśli nie przesłałem/am CV, poproś o przesłanie lub opisanie doświadczenia zawodowego. Poprowadź mnie z konkretnymi uwagami sekcja po sekcji. Odpowiadaj tylko w rozmowie, chyba że wyraźnie poproszę o napisanie lub przepisanie całego CV.',
     },
-    resume_review: {
-      label: 'Przegląd CV',
-      ariaLabel: 'Przegląd CV — ulepsz swoje CV',
+    help_apply: {
+      label: 'Pomóż mi aplikować',
+      ariaLabel: 'Pomóż mi aplikować — wskazówki dotyczące poszukiwania pracy i aplikacji',
       starter:
-        'Chciałbym/Chciałabym uzyskać pomoc z CV. Jeśli nie przesłałem/am CV, poproś o jego przesłanie lub opisanie doświadczenia. Następnie pomóż mi je ulepszyć i lepiej przygotować do odpowiednich ofert pracy.',
+        'Chciałbym/Chciałabym uzyskać pomoc w aplikowaniu o pracę. Zapytaj, na jakie stanowiska celuję i o moje doświadczenie. Poprowadź mnie przez strategie poszukiwania, aplikacje, follow-up i przygotowanie materiałów—krok po kroku w rozmowie.',
     },
-    interview_prep: {
-      label: 'Przygotowanie do rozmowy',
-      ariaLabel: 'Przygotowanie do rozmowy — ćwicz i przygotuj się',
+    practice_interviews: {
+      label: 'Prep. rozmów',
+      ariaLabel: 'Prep. rozmów — przygotuj się do rozmów kwalifikacyjnych',
       starter:
-        'Chciałbym/Chciałabym przygotować się do rozmów kwalifikacyjnych. Zapytaj, jakiego rodzaju pracy szukam, a następnie zaproponuj coaching, typowe pytania i możliwości ćwiczeń.',
+        'Chciałbym/Chciałabym przećwiczyć rozmowy kwalifikacyjne. Zapytaj, jakiego rodzaju pracy szukam, a następnie zaproponuj coaching, typowe pytania i ćwiczenia po jednym pytaniu.',
     },
-    build_skills: {
-      label: 'Rozwijaj umiejętności',
-      ariaLabel: 'Rozwijaj umiejętności — wskaż szkolenia, które pomogą Ci rosnąć',
+    career_plan: {
+      label: 'Planowanie kariery',
+      ariaLabel: 'Planowanie kariery — określ cele i kolejne kroki',
       starter:
-        'Chciałbym/Chciałabym określić umiejętności, które poprawią moje szanse zawodowe. Zapytaj o cele i obecne doświadczenie, a następnie poleć praktyczne umiejętności, certyfikaty lub ścieżki szkoleniowe.',
+        'Chciałbym/Chciałabym stworzyć plan kariery. Zapytaj o cele, harmonogram, ograniczenia i obecną sytuację. Pomóż mi określić realistyczne kroki i kamienie milowe w rozmowie.',
     },
     local_resources: {
       label: 'Zasoby lokalne',
-      ariaLabel: 'Zasoby lokalne — znajdź wsparcie zawodowe w pobliżu',
+      ariaLabel: 'Zasoby lokalne — wsparcie zawodowe w pobliżu',
       starter:
-        'Chciałbym/Chciałabym znaleźć lokalne zasoby zawodowe i rynku pracy. Zapytaj o moje miasto, województwo lub kod pocztowy, a następnie wyjaśnij, jakie organizacje, programy i usługi wsparcia mogą być dostępne.',
+        'Chciałbym/Chciałabym znaleźć lokalne zasoby zawodowe i rynku pracy. Zapytaj o miasto, województwo lub kod pocztowy, a następnie opisz rodzaje organizacji, programów i wsparcia dostępnych w pobliżu.',
     },
   },
   ru: {
-    find_jobs: {
-      label: 'Поиск работы',
-      ariaLabel: 'Поиск работы — помощь в поиске работы',
+    explore_careers: {
+      label: 'Изучить карьеры',
+      ariaLabel: 'Изучить карьеры — найти подходящие профессии',
       starter:
-        'Мне нужна помощь в поиске работы. Начните с того, чтобы узнать о моём опыте, интересах, образовании и целях, чтобы порекомендовать подходящие карьерные пути и следующие шаги.',
+        'Мне нужна помощь в изучении подходящих карьер. Задайте вопросы о моих интересах, сильных сторонах, опыте работы, образовании и предпочтениях. Предложите профессии и объясните почему—только в формате беседы и коучинга, если я не попрошу документ.',
     },
-    career_options: {
-      label: 'Варианты карьеры',
-      ariaLabel: 'Варианты карьеры — изучите подходящие профессии',
+    build_resume: {
+      label: 'Собрать резюме',
+      ariaLabel: 'Собрать резюме — коучинг по резюме',
       starter:
-        'Мне нужна помощь в изучении карьерных вариантов. Задайте вопросы о моих интересах, сильных сторонах, опыте работы, образовании и предпочтениях, чтобы предложить подходящие профессии.',
+        'Мне нужна помощь с резюме. Если я не загрузил(а) резюме, попросите загрузить его или описать опыт работы. Давайте обратную связь по разделам. Отвечайте только в беседе, пока я явно не попрошу написать или переписать полное резюме.',
     },
-    resume_review: {
-      label: 'Проверка резюме',
-      ariaLabel: 'Проверка резюме — улучшите своё резюме',
+    help_apply: {
+      label: 'Помочь с откликами',
+      ariaLabel: 'Помочь с откликами — поиск работы и подача заявок',
       starter:
-        'Мне нужна помощь с резюме. Если я не загрузил(а) резюме, попросите меня загрузить его или описать опыт. Затем помогите улучшить его и подготовиться к подходящим вакансиям.',
+        'Мне нужна помощь с подачей заявок на работу. Спросите, на какие роли я ориентируюсь и о моём опыте. Помогите со стратегией поиска, заявками, follow-up и подготовкой материалов—шаг за шагом в беседе.',
     },
-    interview_prep: {
+    practice_interviews: {
       label: 'Подготовка к интервью',
-      ariaLabel: 'Подготовка к интервью — практика и подготовка',
+      ariaLabel: 'Подготовка к интервью — подготовка и тренировка',
       starter:
-        'Мне нужна помощь в подготовке к собеседованиям. Спросите, какую работу я ищу, а затем предложите коучинг, типичные вопросы и возможности для практики.',
+        'Я хочу потренироваться на собеседованиях. Спросите, какую работу я ищу, затем предложите коучинг, типичные вопросы и практику по одному вопросу за раз.',
     },
-    build_skills: {
-      label: 'Развитие навыков',
-      ariaLabel: 'Развитие навыков — определите обучение для роста',
+    career_plan: {
+      label: 'Планирование карьеры',
+      ariaLabel: 'Планирование карьеры — цели и следующие шаги',
       starter:
-        'Мне нужна помощь в определении навыков, которые улучшат мои карьерные возможности. Спросите о моих целях и текущем опыте, затем порекомендуйте практические навыки, сертификаты или программы обучения.',
+        'Мне нужна помощь в составлении карьерного плана. Спросите о целях, сроках, ограничениях и текущей ситуации. Помогите наметить реалистичные шаги и этапы в формате беседы.',
     },
     local_resources: {
       label: 'Местные ресурсы',
-      ariaLabel: 'Местные ресурсы — найдите поддержку рядом с вами',
+      ariaLabel: 'Местные ресурсы — поддержка рядом с вами',
       starter:
-        'Мне нужна помощь в поиске местных карьерных и трудовых ресурсов. Спросите мой город, штат или почтовый индекс, затем объясните, какие организации, программы и службы поддержки могут быть доступны.',
+        'Мне нужна помощь в поиске местных карьерных и трудовых ресурсов. Спросите город, штат или почтовый индекс, затем опишите типы организаций, программ и поддержки, доступных поблизости.',
     },
   },
   ar: {
-    find_jobs: {
-      label: 'البحث عن وظيفة',
-      ariaLabel: 'البحث عن وظيفة — احصل على مساعدة في إيجاد عمل',
+    explore_careers: {
+      label: 'استكشف المسارات',
+      ariaLabel: 'استكشف المسارات — اكتشف مهنًا قد تناسبك',
       starter:
-        'أود المساعدة في إيجاد وظيفة. يُرجى البدء بالتعرّف على خلفيتي واهتماماتي وخبرتي وأهدافي حتى تتمكن من اقتراح مسارات مهنية وخطوات تالية مناسبة.',
+        'أود المساعدة في استكشاف مسارات مهنية قد تناسبني. اطرح أسئلة عن اهتماماتي ونقاط قوتي وتاريخي الوظيفي وتعليمي وتفضيلاتي. اقترح مهنًا مناسبة واشرح السبب—عبر المحادثة والتوجيه فقط ما لم أطلب مستندًا.',
     },
-    career_options: {
-      label: 'خيارات مهنية',
-      ariaLabel: 'خيارات مهنية — استكشف مهنًا قد تناسبك',
+    build_resume: {
+      label: 'بناء سيرتي',
+      ariaLabel: 'بناء سيرتي — توجيه حول السيرة الذاتية',
       starter:
-        'أود المساعدة في استكشاف الخيارات المهنية. اطرح عليّ أسئلة عن اهتماماتي ونقاط قوتي وتاريخي الوظيفي وتعليمي وتفضيلاتي حتى تقترح مهنًا قد تناسبني.',
+        'أود المساعدة في سيرتي الذاتية. إذا لم أرفع سيرة، اطلب مني رفعها أو مشاركة تاريخي الوظيفي. وجّهني بملاحظات محددة قسمًا بقسم. أجب في المحادثة فقط ما لم أطلب صراحة كتابة أو إعادة كتابة سيرتي كاملة.',
     },
-    resume_review: {
-      label: 'مراجعة السيرة',
-      ariaLabel: 'مراجعة السيرة — حسّن سيرتك الذاتية',
+    help_apply: {
+      label: 'ساعدني في التقديم',
+      ariaLabel: 'ساعدني في التقديم — إرشاد للبحث عن عمل والتقديم',
       starter:
-        'أود المساعدة في سيرتي الذاتية. إذا لم أرفع سيرة ذاتية، اطلب مني رفعها أو تزويدك بخبرتي. ثم ساعدني على تحسينها وتقديم نفسي للوظائف المناسبة.',
+        'أود المساعدة في التقديم على الوظائف. اسأل عن الأدوار التي أستهدفها وعن خلفيتي. وجّهني في استراتيجيات البحث والطلبات والمتابعة وإعداد المواد—خطوة بخطوة عبر المحادثة.',
     },
-    interview_prep: {
+    practice_interviews: {
       label: 'تحضير المقابلة',
-      ariaLabel: 'تحضير المقابلة — تدرّب واستعد للمقابلات',
+      ariaLabel: 'تحضير المقابلة — الاستعداد والتمرين',
       starter:
-        'أود المساعدة في التحضير للمقابلات. اسأل عن نوع الوظيفة التي أبحث عنها، ثم قدّم لي توجيهًا وأسئلة شائعة وفرصًا للتدريب.',
+        'أود التدرب على المقابلات. اسأل عن نوع الدور الذي أسعى إليه، ثم قدّم توجيهًا وأسئلة شائعة وتمرينًا سؤالًا واحدًا في كل مرة.',
     },
-    build_skills: {
-      label: 'بناء المهارات',
-      ariaLabel: 'بناء المهارات — حدّد التدريب المناسب للنمو',
+    career_plan: {
+      label: 'التخطيط المهني',
+      ariaLabel: 'التخطيط المهني — تحديد الأهداف والخطوات التالية',
       starter:
-        'أود المساعدة في تحديد المهارات التي تعزز فرصي المهنية. اسأل عن أهدافي وخبرتي الحالية، ثم اقترح مهارات عملية أو شهادات أو مسارات تدريب.',
+        'أود المساعدة في وضع خطة مهنية. اسأل عن أهدافي والجدول الزمني والقيود ووضعي الحالي. ساعدني على تحديد خطوات ومعالم واقعية عبر المحادثة.',
     },
     local_resources: {
       label: 'موارد محلية',
-      ariaLabel: 'موارد محلية — اعثر على دعم مهني قريب منك',
+      ariaLabel: 'موارد محلية — دعم مهني قريب منك',
       starter:
-        'أود المساعدة في تحديد الموارد المهنية والعمل المحلية. اسأل عن مدينتي أو ولايتي أو الرمز البريدي، ثم اشرح أنواع المنظمات والبرامج وخدمات الدعم المتاحة.',
+        'أود المساعدة في إيجاد موارد مهنية وعمل محلية. اسأل عن مدينتي أو ولايتي أو الرمز البريدي، ثم صف أنواع المنظمات والبرامج والدعم المتاحة قريبًا مني.',
     },
   },
 }
