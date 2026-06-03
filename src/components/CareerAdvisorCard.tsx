@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
-import { Compass, Download, FileText, GraduationCap, ImagePlus, MapPin, MessageSquare, Mic, Search, Send, UserRound, X } from 'lucide-react'
+import { Compass, Download, FileText, GraduationCap, MapPin, MessageSquare, Mic, Paperclip, Search, Send, UserRound, X } from 'lucide-react'
 import {
   formatFileOnlyUserMessage,
   formatFileUploadAcknowledgment,
@@ -479,26 +479,48 @@ export function CareerAdvisorCard({ language, readAloudEnabled }: CareerAdvisorC
       aria-label={ chatEmpty ? undefined : ui.conversationAria }
     >
       {chatEmpty ? (
-        <div className="advisor-card__hero">
-          <div className="advisor-card__sparkle-wrap" aria-hidden>
-            <img
-              src="/ceo.png"
-              alt=""
-              className="advisor-card__hero-photo"
-              width={ 144 }
-              height={ 144 }
-              decoding="async"
-            />
-          </div>
-          <div
-            className="advisor-card__hero-copy"
-            aria-live="polite"
-            aria-atomic="true"
-          >
-            <h1 className="advisor-card__title" id={ `${ formId }-title` }>
-              { ui.heroTitle }
-            </h1>
-            <p className="advisor-card__subtitle">{ ui.heroSubtitle }</p>
+        <div className="advisor-card__landing">
+          <div className="advisor-card__hero">
+            <div className="advisor-card__portrait">
+              <img
+                src="/ceo.png"
+                alt={ ui.heroPortraitAlt }
+                className="advisor-card__portrait-photo"
+                width={ 320 }
+                height={ 400 }
+                decoding="async"
+              />
+            </div>
+            <div className="advisor-card__hero-content">
+              <div
+                className="advisor-card__hero-intro"
+                aria-live="polite"
+                aria-atomic="true"
+              >
+                <h1 className="advisor-card__title" id={ `${ formId }-title` }>
+                  { ui.heroTitle }
+                </h1>
+                <p className="advisor-card__subtitle">{ ui.heroSubtitle }</p>
+                <p className="advisor-card__subtitle-prompt">{ ui.heroSubtitlePrompt }</p>
+              </div>
+
+              <div className="advisor-card__quick" role="group" aria-label={ ui.quickActionsAria }>
+                {quickActions.map(({ id, label, ariaLabel, icon: Icon }) => (
+                  <button
+                    key={ id }
+                    type="button"
+                    className="quick-pill"
+                    aria-label={ ariaLabel }
+                    onClick={ () => handleQuickAction(id) }
+                  >
+                    <span className="quick-pill__icon" aria-hidden>
+                      <Icon size={ 22 } strokeWidth={ 2 } />
+                    </span>
+                    <span aria-hidden>{ label }</span>
+                  </button>
+                ))}
+              </div>
+            </div>
           </div>
         </div>
       ) : null}
@@ -572,25 +594,6 @@ export function CareerAdvisorCard({ language, readAloudEnabled }: CareerAdvisorC
       ) : null}
 
       <div className={ `advisor-card__dock${ chatEmpty ? '' : ' advisor-card__dock--chat-only' }` }>
-        {chatEmpty ? (
-          <div className="advisor-card__quick" role="group" aria-label={ ui.quickActionsAria }>
-            {quickActions.map(({ id, label, ariaLabel, icon: Icon }) => (
-              <button
-                key={ id }
-                type="button"
-                className="quick-pill"
-                aria-label={ ariaLabel }
-                onClick={ () => handleQuickAction(id) }
-              >
-                <span className="quick-pill__icon" aria-hidden>
-                  <Icon size={ 20 } strokeWidth={ 1.75 } />
-                </span>
-                <span aria-hidden>{ label }</span>
-              </button>
-            ))}
-          </div>
-        ) : null}
-
         <form
           id={ `${ formId }-form` }
           className={ `advisor-card__composer${ chatEmpty ? '' : ' advisor-card__composer--dock-top' }` }
@@ -627,7 +630,7 @@ export function CareerAdvisorCard({ language, readAloudEnabled }: CareerAdvisorC
                 onClick={ handlePickFile }
                 disabled={ uploading }
               >
-                <ImagePlus size={ 18 } strokeWidth={ 1.75 } aria-hidden />
+                <Paperclip size={ 20 } strokeWidth={ 2 } aria-hidden />
                 <span className="text-btn__label">{ ui.addFile }</span>
               </button>
               <input
@@ -660,7 +663,7 @@ export function CareerAdvisorCard({ language, readAloudEnabled }: CareerAdvisorC
                 onClick={ toggleVoiceInput }
                 disabled={ !recognitionRef.current }
               >
-                <Mic size={ 20 } strokeWidth={ 1.75 } />
+                <Mic size={ 22 } strokeWidth={ 2 } />
               </button>
               <button
                 type="submit"
@@ -668,11 +671,14 @@ export function CareerAdvisorCard({ language, readAloudEnabled }: CareerAdvisorC
                 aria-label={ ui.sendMessageAria }
                 disabled={ !canSend }
               >
-                <Send size={ 18 } strokeWidth={ 2 } />
+                <Send size={ 20 } strokeWidth={ 2.25 } />
               </button>
             </div>
           </div>
         </form>
+        <p className="ai-disclaimer" role="note">
+          { ui.aiDisclaimer }
+        </p>
       </div>
     </section>
   )

@@ -73,15 +73,10 @@ export default function App() {
         ) : page === 'support' ? (
           <LiveSupportPage language={ language } />
         ) : (
-          <>
-            <CareerAdvisorCard
-              language={ language }
-              readAloudEnabled={ readAloudEnabled && isReadAloudSupported(language) }
-            />
-            <p className="ai-disclaimer" role="note">
-              { ui.aiDisclaimer }
-            </p>
-          </>
+          <CareerAdvisorCard
+            language={ language }
+            readAloudEnabled={ readAloudEnabled && isReadAloudSupported(language) }
+          />
         )}
       </main>
       <Footer language={ language } />

@@ -107,7 +107,7 @@ export function Header({ page, onNavigate, language, onLanguageChange, readAloud
           } }
           aria-label="Goodwill AI Career Center — refresh page"
         >
-          <GoodwillLogo wordmarkSize={ 20 } logoHeight={ 36 } />
+          <GoodwillLogo wordmarkSize={ 20 } logoHeight={ 44 } />
         </a>
 
         <div className="site-header__right">

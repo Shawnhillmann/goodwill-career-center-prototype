@@ -8,10 +8,10 @@ export const DEFAULT_TEXT_SIZE_LEVEL: TextSizeLevel = 'normal'
 export const TEXT_SIZE_LEVELS: TextSizeLevel[] = ['small', 'normal', 'large', 'veryLarge']
 
 const TEXT_SIZE_SCALE: Record<TextSizeLevel, number> = {
-  small: 0.875,
+  small: 0.94,
   normal: 1,
-  large: 1.125,
-  veryLarge: 1.3125,
+  large: 1.03,
+  veryLarge: 1.06,
 }
 
 export function isTextSizeLevel(value: unknown): value is TextSizeLevel {

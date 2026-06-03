@@ -13,7 +13,7 @@ export function Footer({ language }: FooterProps) {
     <footer className="site-footer">
       <div className="site-footer__inner">
         <div className="site-footer__intro">
-          <GoodwillLogo wordmarkSize={ 20 } logoHeight={ 36 } />
+          <GoodwillLogo wordmarkSize={ 20 } logoHeight={ 44 } />
           <p>{ ui.footerTagline }</p>
           <a className="site-footer__learn" href="#">
             { ui.footerLearnMore } →
@@ -24,16 +24,16 @@ export function Footer({ language }: FooterProps) {
           <div className="site-footer__social-block">
             <div className="site-footer__social">
               <a href="#" className="site-footer__social-btn" aria-label="Facebook">
-                <Facebook size={ 18 } strokeWidth={ 1.75 } />
+                <Facebook size={ 20 } strokeWidth={ 2 } />
               </a>
               <a href="#" className="site-footer__social-btn" aria-label="Instagram">
-                <Instagram size={ 18 } strokeWidth={ 1.75 } />
+                <Instagram size={ 20 } strokeWidth={ 2 } />
               </a>
               <a href="#" className="site-footer__social-btn" aria-label="LinkedIn">
-                <Linkedin size={ 18 } strokeWidth={ 1.75 } />
+                <Linkedin size={ 20 } strokeWidth={ 2 } />
               </a>
               <a href="#" className="site-footer__social-btn" aria-label="YouTube">
-                <Youtube size={ 18 } strokeWidth={ 1.75 } />
+                <Youtube size={ 20 } strokeWidth={ 2 } />
               </a>
             </div>
           </div>
