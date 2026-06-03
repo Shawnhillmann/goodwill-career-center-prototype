@@ -1967,6 +1967,24 @@ button {
 }
 
 /* Advisor “thinking” row (loading dots) */
+.bubble--streaming .bubble__md::after {
+  content: '';
+  display: inline-block;
+  width: 0.45rem;
+  height: 1em;
+  margin-left: 0.15rem;
+  vertical-align: text-bottom;
+  background: var(--gw-blue);
+  border-radius: 1px;
+  animation: stream-caret 0.9s step-end infinite;
+}
+
+@keyframes stream-caret {
+  50% {
+    opacity: 0;
+  }
+}
+
 .thinking-row {
   display: flex;
   align-items: center;

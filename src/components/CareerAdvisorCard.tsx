@@ -12,11 +12,17 @@ import {
 import { isReadAloudSupported } from '../lib/readAloudSupport'
 import {
   playAdvisorMessageSound,
+  playStreamWordTick,
   playUserMessageSound,
+  startStreamingSound,
   startThinkingSound,
+  stopStreamingSound,
   stopThinkingSound,
   unlockChatAudio,
 } from '../lib/chatSounds'
+import { consumeAdvisorChatStream } from '../lib/chatStream'
+import { shouldStreamAdvisorReply } from '../lib/streamingPolicy'
+import { createStreamTextReveal } from '../lib/streamTextReveal'
 import { listQuickActions, type QuickActionId } from '../quickActions'
 
 type ChatRole = 'user' | 'advisor'
@@ -29,6 +35,7 @@ type ChatMessage = {
   value?: string
   kind?: 'document'
   attachmentName?: string
+  streaming?: boolean
 }
 
 type CareerAdvisorCardProps = {
@@ -130,6 +137,67 @@ export function CareerAdvisorCard({ language, readAloudEnabled }: CareerAdvisorC
       const docText = opts?.uploadedDocumentText ?? null
       const source = opts?.source ?? 'typed'
       const quickAction = opts?.quickAction
+      const lastUserContent =
+        [...apiMessages].reverse().find((m) => m.role === 'user')?.content?.trim() ?? ''
+      const useStream = shouldStreamAdvisorReply({
+        userMessage: lastUserContent,
+        expectDocument: Boolean(opts?.expectDocument),
+        quickAction,
+        hasUploadedDocument: Boolean(docText?.trim()),
+      })
+      const streamMessageId = nextId()
+      let streamBubbleVisible = false
+
+      const reveal = useStream
+        ? createStreamTextReveal(
+            (displayText) => {
+              if (!displayText) return
+              if (!streamBubbleVisible) {
+                streamBubbleVisible = true
+                setAwaitingAdvisor(false)
+                stopThinkingSound()
+                startStreamingSound()
+                setMessages((prev) => [
+                  ...prev,
+                  {
+                    id: streamMessageId,
+                    role: 'advisor',
+                    text: displayText,
+                    streaming: true,
+                  },
+                ])
+                return
+              }
+              setMessages((prev) =>
+                prev.map((m) =>
+                  m.id === streamMessageId ? { ...m, text: displayText, streaming: true } : m,
+                ),
+              )
+            },
+            { onWord: () => playStreamWordTick() },
+          )
+        : null
+
+      const showStreamError = (message: string) => {
+        reveal?.reset()
+        stopStreamingSound()
+        setAwaitingAdvisor(false)
+        setMessages((prev) => {
+          const withoutPartial = streamBubbleVisible
+            ? prev.filter((m) => m.id !== streamMessageId)
+            : prev
+          return [
+            ...withoutPartial,
+            {
+              id: nextId(),
+              role: 'advisor' as const,
+              text: message,
+            },
+          ]
+        })
+        playAdvisorMessageSound()
+      }
+
       try {
         const resp = await fetch('/api/chat', {
           method: 'POST',
@@ -138,62 +206,65 @@ export function CareerAdvisorCard({ language, readAloudEnabled }: CareerAdvisorC
             messages: apiMessages,
             language,
             source,
+            stream: useStream,
             ...(quickAction ? { quickAction } : {}),
             ...(docText ? { uploadedDocumentText: docText } : {}),
           }),
         })
 
-        const rawText = await resp.text().catch(() => '')
-        let json: any = null
-        try {
-          json = rawText ? (JSON.parse(rawText) as any) : null
-        } catch {
-          json = null
-        }
-        if (!resp.ok) {
-          const fallbackBase =
-            'Sorry — I’m having trouble responding right now. Please try again in a moment.'
-          const base = (typeof json?.error === 'string' ? json.error : json?.error?.message) ?? fallbackBase
-          const details =
-            typeof json?.error?.details === 'string'
-              ? json.error.details
-              : Array.isArray(json?.missing)
-                ? `Missing: ${ json.missing.join(', ') }`
-                : ''
-          const status = `HTTP ${ resp.status }`
-          const hint =
-            details ||
-            (rawText && rawText.length < 600 && !rawText.trim().startsWith('<') ? rawText.trim() : '')
-          const msg = hint ? `${ base } (${ status }) ${ hint }` : `${ base } (${ status })`
-          throw new Error(msg)
-        }
-
-        const replyText = String(json?.reply ?? '').trim()
-        if (!replyText) throw new Error('Sorry — I didn’t get a response. Please try again.')
-
-        setAwaitingAdvisor(false)
-        setMessages((prev) => [
-          ...prev,
-          {
-            id: nextId(),
-            role: 'advisor',
-            text: replyText,
-            ...(opts?.expectDocument ? { kind: 'document' as const } : {}),
+        await consumeAdvisorChatStream(resp, {
+          onDelta: (_chunk, fullText) => {
+            if (reveal) {
+              reveal.setTarget(fullText)
+              return
+            }
+            if (!streamBubbleVisible) {
+              streamBubbleVisible = true
+              setAwaitingAdvisor(false)
+              setMessages((prev) => [
+                ...prev,
+                {
+                  id: streamMessageId,
+                  role: 'advisor',
+                  text: fullText,
+                  ...(opts?.expectDocument ? { kind: 'document' as const } : {}),
+                },
+              ])
+              return
+            }
+            setMessages((prev) =>
+              prev.map((m) => (m.id === streamMessageId ? { ...m, text: fullText } : m)),
+            )
           },
-        ])
-        playAdvisorMessageSound()
-        speak(replyText)
+          onDone: (replyText) => {
+            reveal?.flush()
+            stopStreamingSound()
+            setAwaitingAdvisor(false)
+            setMessages((prev) => {
+              if (!streamBubbleVisible) {
+                return [
+                  ...prev,
+                  {
+                    id: streamMessageId,
+                    role: 'advisor',
+                    text: replyText,
+                    ...(opts?.expectDocument ? { kind: 'document' as const } : {}),
+                  },
+                ]
+              }
+              return prev.map((m) =>
+                m.id === streamMessageId ? { ...m, text: replyText, streaming: false } : m,
+              )
+            })
+            playAdvisorMessageSound()
+            speak(replyText)
+          },
+          onError: (message) => {
+            showStreamError(message)
+          },
+        })
       } catch (e: any) {
-        setAwaitingAdvisor(false)
-        setMessages((prev) => [
-          ...prev,
-          {
-            id: nextId(),
-            role: 'advisor',
-            text: e?.message || 'Sorry — I’m having trouble responding right now. Please try again.',
-          },
-        ])
-        playAdvisorMessageSound()
+        showStreamError(e?.message || 'Sorry — I’m having trouble responding right now. Please try again.')
       }
     },
     [language, speak],
@@ -553,7 +624,7 @@ export function CareerAdvisorCard({ language, readAloudEnabled }: CareerAdvisorC
                   <span className="msg-avatar msg-avatar--advisor" aria-hidden>
                     <span className="msg-avatar__g">g</span>
                   </span>
-                  <div className="bubble bubble--advisor">
+                  <div className={ `bubble bubble--advisor${ msg.streaming ? ' bubble--streaming' : '' }` }>
                     <div className="bubble__content">
                       <div className="bubble__md">
                         <ReactMarkdown remarkPlugins={ [remarkGfm] }>{ msg.text }</ReactMarkdown>

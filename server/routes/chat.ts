@@ -6,7 +6,10 @@ import { sendError } from '../lib/errors.js'
 import { looksLikeUngroundedSearchClaim } from '../lib/hallucinationGuard.js'
 import { invokePlainAdvisorChat } from '../lib/plainChat.js'
 import { invokeOpenAiResponsesText, type ResponsesInvokeResult } from '../lib/openaiResponses.js'
+import { streamOpenAiResponsesText } from '../lib/openaiResponsesStream.js'
 import { getOpenAiConfig, missingOpenAiEnv, selectChatModel } from '../lib/openaiModels.js'
+import { endSse, initSse, writeSse } from '../lib/sse.js'
+import { shouldStreamAdvisorReply } from '../lib/streamingPolicy.js'
 import { isQuickActionId } from '../lib/quickActions.js'
 
 type ChatRequestSource = 'typed' | 'quick_option'
@@ -17,6 +20,7 @@ type ChatRequestBody = {
   uploadedDocumentText?: string
   source?: ChatRequestSource
   quickAction?: string
+  stream?: boolean
 }
 
 function isNonEmptyString(v: unknown): v is string {
@@ -97,6 +101,100 @@ chatRouter.post('/', async (req, res) => {
   const { apiKey } = getOpenAiConfig()
   if (!apiKey) {
     return sendError(res, 500, 'Server is missing OpenAI configuration. Set OPENAI_API_KEY in your environment.')
+  }
+
+  const useStream = shouldStreamAdvisorReply({
+    clientWantsStream: Boolean(body.stream),
+    docOnly,
+    userMessage: lastUser,
+    quickAction,
+    hasUploadedDocument,
+  })
+
+  if (useStream) {
+    initSse(res)
+    const model = selectChatModel({ hasUploadedDocument })
+    const maxOutputTokens = hasUploadedDocument ? 800 : 600
+    const streamStarted = Date.now()
+
+    try {
+      let reply = ''
+      const result = await streamOpenAiResponsesText({
+        apiKey,
+        model,
+        instructions,
+        messages,
+        maxOutputTokens,
+        reasoningEffort: 'minimal',
+        onDelta: (chunk) => {
+          reply += chunk
+          writeSse(res, 'delta', { text: chunk })
+        },
+      })
+
+      reply = result.text.trim()
+
+      if (reply && looksLikeUngroundedSearchClaim(reply)) {
+        logChat('ungrounded_listing_claim', { requestId, model, path: 'chat' })
+      }
+
+      if (!reply) {
+        const diag = resultDiagnostics(result)
+        logChat502({
+          requestId,
+          lastUserMessage: lastUser,
+          route: '/api/chat',
+          model,
+          uploadPresent: hasUploadedDocument,
+          retryUsed: false,
+          path: 'chat',
+          messageCount: messages.length,
+          ...diag,
+        })
+        writeSse(res, 'error', { message: 'The AI did not return a response. Please try again.' })
+        endSse(res)
+        return
+      }
+
+      logChat('request_timing', {
+        requestId,
+        path: 'chat',
+        source,
+        quickAction,
+        totalMs: Date.now() - requestStarted,
+        modelCallMs: Date.now() - streamStarted,
+        fallbackUsed: false,
+        model,
+        uploadedDoc: hasUploadedDocument,
+        messageCount: messages.length,
+        lastUserPreview: lastUser.slice(0, 80),
+        streamed: true,
+      })
+
+      writeSse(res, 'done', { reply })
+      endSse(res)
+      return
+    } catch (err: unknown) {
+      const errorMessage = err instanceof Error ? err.message : String(err)
+      logChat502({
+        requestId,
+        lastUserMessage: lastUser,
+        route: '/api/chat',
+        model,
+        uploadPresent: hasUploadedDocument,
+        retryUsed: false,
+        exception: errorMessage,
+        path: 'chat',
+        messageCount: messages.length,
+      })
+      logChat('openai_error', { requestId, source, error: errorMessage })
+      writeSse(res, 'error', {
+        message: 'Unable to get an AI response right now. Please try again in a moment.',
+        details: errorMessage,
+      })
+      endSse(res)
+      return
+    }
   }
 
   let reply = ''

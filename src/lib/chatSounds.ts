@@ -7,6 +7,7 @@ type ToneStep = {
 
 let audioCtx: AudioContext | null = null
 let thinkingInterval: ReturnType<typeof setInterval> | null = null
+let streamingInterval: ReturnType<typeof setInterval> | null = null
 
 function soundsAllowed(): boolean {
   if (typeof window === 'undefined') return false
@@ -88,4 +89,28 @@ export function stopThinkingSound(): void {
     clearInterval(thinkingInterval)
     thinkingInterval = null
   }
+}
+
+function playStreamingPulse(): void {
+  playSequence([{ freq: 392, start: 0, duration: 0.06, gain: 0.014 }], 'sine')
+}
+
+/** Soft pulse while the advisor message is streaming in. */
+export function startStreamingSound(): void {
+  stopStreamingSound()
+  if (!soundsAllowed()) return
+  playStreamingPulse()
+  streamingInterval = setInterval(playStreamingPulse, 850)
+}
+
+export function stopStreamingSound(): void {
+  if (streamingInterval) {
+    clearInterval(streamingInterval)
+    streamingInterval = null
+  }
+}
+
+/** Very quiet tick when each word appears during a streamed reply. */
+export function playStreamWordTick(): void {
+  playSequence([{ freq: 880, start: 0, duration: 0.018, gain: 0.01 }], 'sine')
 }
