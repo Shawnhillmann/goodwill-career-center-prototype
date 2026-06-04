@@ -610,7 +610,7 @@ export function CareerAdvisorCard({ language, readAloudEnabled }: CareerAdvisorC
   const canSend = !uploading && (draft.trim().length > 0 || Boolean(pendingAttachment))
 
   return (
-    <>
+    <div className="career-advisor-stack">
     <section
       className={ `advisor-card${ chatEmpty ? ' advisor-card--landing' : ' advisor-card--active-chat' }` }
       aria-labelledby={ chatEmpty ? `${ formId }-title` : undefined }
@@ -822,6 +822,6 @@ export function CareerAdvisorCard({ language, readAloudEnabled }: CareerAdvisorC
     <p className="ai-disclaimer ai-disclaimer--below-chat" role="note">
       { ui.aiDisclaimer }
     </p>
-    </>
+    </div>
   )
 }

@@ -102,6 +102,17 @@ button {
 
 .chat-view__panel {
   width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+}
+
+.career-advisor-stack {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  width: 100%;
+  min-width: 0;
 }
 
 .chat-view .home-explore-band {
@@ -1774,29 +1785,25 @@ button {
 
 /* Narrow viewports: carousel only, placed above the composer */
 @media (max-width: 1023px) {
-  .app--chat-landing {
-    min-height: 100dvh;
-  }
-
   .app--chat-landing .app__main--chat {
-    flex: 1;
-    min-height: 0;
+    flex: 1 1 auto;
+    min-height: auto;
     display: flex;
     flex-direction: column;
-    padding: 0.75rem 0.85rem 0;
+    padding: 0.75rem 0.85rem 1rem;
+    overflow: visible;
   }
 
   .app--chat-landing .chat-view {
-    flex: 1;
-    min-height: 0;
+    flex: 0 1 auto;
+    min-height: auto;
     display: flex;
     flex-direction: column;
   }
 
   .app--chat-landing .chat-view__panel {
-    flex: 1;
-    min-height: 0;
-    display: flex;
+    flex: 0 1 auto;
+    min-height: auto;
   }
 
   .app--chat-landing .home-explore-band {
@@ -1808,8 +1815,8 @@ button {
   }
 
   .advisor-card--landing {
-    flex: 1;
-    min-height: 0;
+    flex: 0 1 auto;
+    min-height: auto;
     display: flex;
     flex-direction: column;
     text-align: center;
@@ -1818,16 +1825,16 @@ button {
   }
 
   .advisor-card__landing {
-    flex: 1 1 auto;
-    min-height: 0;
+    flex: 0 1 auto;
+    min-height: auto;
     display: flex;
     flex-direction: column;
     gap: 0;
   }
 
   .advisor-card__hero {
-    flex: 1 1 auto;
-    min-height: 0;
+    flex: 0 1 auto;
+    min-height: auto;
     margin-bottom: 0;
     gap: 0.65rem;
   }
@@ -1838,8 +1845,8 @@ button {
   }
 
   .advisor-card__hero-content {
-    flex: 1 1 auto;
-    min-height: 0;
+    flex: 0 1 auto;
+    min-height: auto;
     display: flex;
     flex-direction: column;
     max-width: none;
@@ -2912,13 +2919,11 @@ button {
 .ai-disclaimer--below-chat {
   width: 100%;
   max-width: 100%;
-  margin: 0.65rem auto 0;
+  flex: 0 0 auto;
+  margin: 0.65rem 0 0;
   padding: 0 0.25rem;
   font-size: 0.8125rem;
   line-height: 1.4;
-}
-
-.chat-view__panel .ai-disclaimer--below-chat {
   box-sizing: border-box;
 }
 
