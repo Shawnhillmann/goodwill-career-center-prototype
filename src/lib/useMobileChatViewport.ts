@@ -20,7 +20,9 @@ export function useMobileChatViewport(enabled: boolean) {
     const sync = () => {
       cancelAnimationFrame(frame)
       frame = requestAnimationFrame(() => {
-        const keyboardLift = Math.max(0, window.innerHeight - vv.height - vv.offsetTop)
+        const rawLift = Math.max(0, window.innerHeight - vv.height - vv.offsetTop)
+        // Ignore stale lift values after the keyboard closes (common on iOS).
+        const keyboardLift = rawLift < 72 ? 0 : rawLift
         if (Math.abs(keyboardLift - lastLift) < 2) return
         lastLift = keyboardLift
         document.documentElement.style.setProperty('--chat-keyboard-offset', `${ keyboardLift }px`)

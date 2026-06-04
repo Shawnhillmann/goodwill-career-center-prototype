@@ -1900,10 +1900,14 @@ button {
     overflow: visible;
   }
 
-  .advisor-card--landing .advisor-card__dock {
+  .advisor-card--landing .advisor-card__dock:not(.advisor-card__composer-dock--mobile-fixed) {
     flex-shrink: 0;
     margin-top: 0.5rem;
     padding-top: 0;
+  }
+
+  .app--chat-landing .advisor-card--landing {
+    padding-bottom: calc(1rem + var(--chat-composer-height, 5.5rem));
   }
 }
 
@@ -3337,30 +3341,30 @@ button {
     font-size: 1rem;
   }
 
-  .app--chat-active .advisor-card__composer-dock {
+  .advisor-card__composer-dock--mobile-fixed {
     position: fixed;
     left: 0;
     right: 0;
-    bottom: var(--chat-keyboard-offset, 0px);
-    z-index: 40;
+    bottom: 0;
+    z-index: 50;
     margin: 0;
     padding: 0.45rem 0.65rem;
     padding-bottom: calc(0.45rem + env(safe-area-inset-bottom));
-    background: rgba(238, 244, 252, 0.96);
+    background: rgba(238, 244, 252, 0.98);
     backdrop-filter: blur(10px);
     -webkit-backdrop-filter: blur(10px);
     border-top: 1px solid rgba(212, 222, 235, 0.85);
     box-shadow: 0 -4px 18px rgba(10, 30, 66, 0.06);
-    transform: translateZ(0);
-    will-change: bottom;
-    contain: layout style;
+    transform: translate3d(0, calc(-1 * var(--chat-keyboard-offset, 0px)), 0);
+    visibility: visible;
+    pointer-events: auto;
   }
 
-  .app--chat-active .advisor-card__composer-dock .advisor-card__composer {
+  .advisor-card__composer-dock--mobile-fixed .advisor-card__composer {
     margin: 0;
   }
 
-  .app--chat-active .advisor-card__composer-dock .advisor-card__input-shell--integrated {
+  .advisor-card__composer-dock--mobile-fixed .advisor-card__input-shell--integrated {
     border: 1px solid #d8e2ef;
     border-radius: 1.5rem;
     box-shadow: 0 1px 4px rgba(10, 30, 66, 0.05);
@@ -3370,13 +3374,13 @@ button {
     gap: 0.2rem 0.3rem;
   }
 
-  .app--chat-active .advisor-card__composer-dock .advisor-card__textarea--integrated {
+  .advisor-card__composer-dock--mobile-fixed .advisor-card__textarea--integrated {
     font-size: 1rem;
     padding: 0.55rem 0.35rem;
     min-height: 2.5rem;
   }
 
-  .app--chat-active .advisor-card__composer-dock .send-btn--infield:disabled {
+  .advisor-card__composer-dock--mobile-fixed .send-btn--infield:disabled {
     background: #e8edf4;
     color: #9aa8bc;
   }

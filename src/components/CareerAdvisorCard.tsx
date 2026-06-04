@@ -105,6 +105,7 @@ export function CareerAdvisorCard({
   const composerDockRef = useRef<HTMLDivElement>(null)
   const stickToBottomRef = useRef(true)
   const chatIsLiveRef = useRef(false)
+  const pinningScrollRef = useRef(false)
   const recognitionRef = useRef<any>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [draft, setDraft] = useState('')
@@ -116,6 +117,7 @@ export function CareerAdvisorCard({
   const [documentContext, setDocumentContext] = useState<string | null>(null)
   const [uploading, setUploading] = useState(false)
   const [voiceInputAvailable, setVoiceInputAvailable] = useState(false)
+  const mobileChatLayout = useMediaQuery('(max-width: 1023px)')
 
   const ui = useMemo(() => getUiStrings(language), [language])
   const readAloudActive = readAloudEnabled && isReadAloudSupported(language)
@@ -365,16 +367,16 @@ export function CareerAdvisorCard({
         opts?.quickAction,
       )
       stickToBottomRef.current = true
+      if (mobileChatLayout) onMobileHeaderCompactChange?.(true)
       setMessages((prev) => [...prev, userMessage])
       playUserMessageSound()
       setAwaitingAdvisor(true)
       queueAdvisorReply(apiMessages, { expectDocument, uploadedDocumentText: docText, source, quickAction: opts?.quickAction })
     },
-    [documentContext, messages, queueAdvisorReply, toApiMessages],
+    [documentContext, messages, mobileChatLayout, onMobileHeaderCompactChange, queueAdvisorReply, toApiMessages],
   )
 
   const chatEmpty = messages.length === 0
-  const mobileChatLayout = useMediaQuery('(max-width: 1023px)')
 
   useEffect(() => {
     onChatActiveChange?.(!chatEmpty)
@@ -382,20 +384,43 @@ export function CareerAdvisorCard({
     if (chatEmpty) onMobileHeaderCompactChange?.(false)
   }, [chatEmpty, onChatActiveChange, onMobileHeaderCompactChange])
 
-  useMobileChatViewport(mobileChatLayout && !chatEmpty)
+  useMobileChatViewport(mobileChatLayout)
 
   const chatIsLive = awaitingAdvisor || messages.some((m) => m.streaming)
 
-  const scrollChatScrollerToEnd = useCallback((behavior: ScrollBehavior = 'auto') => {
-    const scroller = chatScrollRef.current
-    if (!scroller) return
-    const top = Math.max(0, scroller.scrollHeight - scroller.clientHeight)
-    if (behavior === 'auto') {
-      scroller.scrollTop = top
+  const syncMobileHeaderCompact = useCallback(() => {
+    if (!mobileChatLayout || chatEmpty) return
+    onMobileHeaderCompactChange?.(stickToBottomRef.current)
+  }, [mobileChatLayout, chatEmpty, onMobileHeaderCompactChange])
+
+  const finishPinningScroll = useCallback(() => {
+    if (!mobileChatLayout) {
+      pinningScrollRef.current = false
       return
     }
-    scroller.scrollTo({ top, behavior })
-  }, [])
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        pinningScrollRef.current = false
+        syncMobileHeaderCompact()
+      })
+    })
+  }, [mobileChatLayout, syncMobileHeaderCompact])
+
+  const scrollChatScrollerToEnd = useCallback(
+    (behavior: ScrollBehavior = 'auto') => {
+      const scroller = chatScrollRef.current
+      if (!scroller) return
+      const top = Math.max(0, scroller.scrollHeight - scroller.clientHeight)
+      if (mobileChatLayout) pinningScrollRef.current = true
+      if (behavior === 'auto') {
+        scroller.scrollTop = top
+      } else {
+        scroller.scrollTo({ top, behavior })
+      }
+      if (mobileChatLayout) finishPinningScroll()
+    },
+    [mobileChatLayout, finishPinningScroll],
+  )
 
   const scrollMessagesToEnd = useCallback(
     (behavior: ScrollBehavior = 'smooth') => {
@@ -418,17 +443,20 @@ export function CareerAdvisorCard({
     if (!scroller) return
     const distanceFromBottom = scroller.scrollHeight - scroller.scrollTop - scroller.clientHeight
     stickToBottomRef.current = distanceFromBottom < 96
-    if (mobileChatLayout && !chatEmpty) {
-      onMobileHeaderCompactChange?.(distanceFromBottom < 72)
+    if (mobileChatLayout && !chatEmpty && !pinningScrollRef.current) {
+      onMobileHeaderCompactChange?.(stickToBottomRef.current)
     }
   }, [mobileChatLayout, chatEmpty, onMobileHeaderCompactChange])
 
   const pinMobileChatToEnd = useCallback(() => {
     scrollChatScrollerToEnd('auto')
+    if (!mobileChatLayout) return
+    pinningScrollRef.current = true
     requestAnimationFrame(() => {
       scrollChatScrollerToEnd('auto')
+      finishPinningScroll()
     })
-  }, [scrollChatScrollerToEnd])
+  }, [scrollChatScrollerToEnd, mobileChatLayout, finishPinningScroll])
 
   useLayoutEffect(() => {
     const wasLive = chatIsLiveRef.current
@@ -444,13 +472,8 @@ export function CareerAdvisorCard({
       pinMobileChatToEnd()
     }
 
-    if (mobileChatLayout && !chatEmpty) {
-      const scroller = chatScrollRef.current
-      if (scroller) {
-        const distanceFromBottom =
-          scroller.scrollHeight - scroller.scrollTop - scroller.clientHeight
-        onMobileHeaderCompactChange?.(distanceFromBottom < 72)
-      }
+    if (mobileChatLayout && !chatEmpty && !pinningScrollRef.current) {
+      syncMobileHeaderCompact()
     }
   }, [
     messages,
@@ -461,6 +484,7 @@ export function CareerAdvisorCard({
     chatEmpty,
     onMobileHeaderCompactChange,
     pinMobileChatToEnd,
+    syncMobileHeaderCompact,
   ])
 
   useEffect(() => {
@@ -673,6 +697,10 @@ export function CareerAdvisorCard({
     setPendingAttachment(null)
     setPendingUploadName(null)
     if (fileInputRef.current) fileInputRef.current.value = ''
+    if (mobileChatLayout) {
+      stickToBottomRef.current = true
+      onMobileHeaderCompactChange?.(true)
+    }
     requestAnimationFrame(() => {
       inputRef.current?.focus({ preventScroll: true })
     })
@@ -757,7 +785,7 @@ export function CareerAdvisorCard({
   const canSend = !uploading && (draft.trim().length > 0 || Boolean(pendingAttachment))
 
   useLayoutEffect(() => {
-    if (!mobileChatLayout || chatEmpty) {
+    if (!mobileChatLayout) {
       document.documentElement.style.removeProperty('--chat-composer-height')
       return
     }
@@ -765,9 +793,11 @@ export function CareerAdvisorCard({
     const dock = composerDockRef.current
     if (!dock) return
 
+    const minHeightPx = 88
     let lastHeight = 0
     const syncHeight = () => {
-      const height = Math.ceil(dock.getBoundingClientRect().height)
+      const measured = Math.ceil(dock.getBoundingClientRect().height)
+      const height = Math.max(minHeightPx, measured)
       if (height === lastHeight) return
       lastHeight = height
       document.documentElement.style.setProperty('--chat-composer-height', `${ height }px`)
@@ -779,7 +809,7 @@ export function CareerAdvisorCard({
     return () => {
       ro?.disconnect()
     }
-  }, [chatEmpty, composerHasAttachment, draft, mobileChatLayout, messages.length])
+  }, [composerHasAttachment, draft, mobileChatLayout, messages.length, chatEmpty])
 
   const composerForm = (
     <form
@@ -998,7 +1028,7 @@ export function CareerAdvisorCard({
         </div>
       ) : null}
 
-      {chatEmpty ? (
+      {chatEmpty && !mobileChatLayout ? (
         <div className="advisor-card__dock">{ composerForm }</div>
       ) : null}
 
@@ -1012,10 +1042,10 @@ export function CareerAdvisorCard({
       ) : null}
     </section>
 
-    {!chatEmpty && mobileChatLayout ? (
+    {mobileChatLayout ? (
       <div
         ref={ composerDockRef }
-        className="advisor-card__dock advisor-card__dock--chat-only advisor-card__composer-dock"
+        className="advisor-card__dock advisor-card__dock--chat-only advisor-card__composer-dock advisor-card__composer-dock--mobile-fixed"
       >
         { composerForm }
       </div>
