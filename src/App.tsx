@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { CareerAdvisorCard } from './components/CareerAdvisorCard'
 import { Footer } from './components/Footer'
 import { Header } from './components/Header'
@@ -26,6 +26,7 @@ export default function App() {
   const [textSizeLevel, setTextSizeLevel] = useState<TextSizeLevel>(() => loadTextSizeLevel())
   const [chatActive, setChatActive] = useState(false)
   const [mobileHeaderCompact, setMobileHeaderCompact] = useState(false)
+  const [chatResetKey, setChatResetKey] = useState(0)
   const mobileChatLayout = useMediaQuery('(max-width: 1023px)')
 
   useEffect(() => {
@@ -37,6 +38,18 @@ export default function App() {
     applyPageHash(next)
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }
+
+  const goToAdvisorHome = useCallback(() => {
+    if ('speechSynthesis' in window) {
+      window.speechSynthesis.cancel()
+    }
+    setChatActive(false)
+    setMobileHeaderCompact(false)
+    setChatResetKey((key) => key + 1)
+    setPage('chat')
+    applyPageHash('chat')
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }, [])
 
   useEffect(() => {
     const onHashChange = () => setPage(hashToPage(window.location.hash))
@@ -94,6 +107,7 @@ export default function App() {
         page={ page }
         compactChat={ page === 'chat' && chatActive && mobileHeaderCompact }
         onNavigate={ navigate }
+        onAdvisorHome={ goToAdvisorHome }
         language={ language }
         onLanguageChange={ setLanguage }
         readAloudEnabled={ readAloudEnabled }
@@ -111,6 +125,7 @@ export default function App() {
           <div className="chat-view">
             <div className="chat-view__panel">
               <CareerAdvisorCard
+                key={ chatResetKey }
                 language={ language }
                 readAloudEnabled={ readAloudEnabled && isReadAloudSupported(language) }
                 onChatActiveChange={ setChatActive }

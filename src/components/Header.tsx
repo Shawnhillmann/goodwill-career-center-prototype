@@ -11,6 +11,7 @@ type HeaderProps = {
   page: AppPage
   compactChat?: boolean
   onNavigate: (page: AppPage) => void
+  onAdvisorHome: () => void
   language: SupportedLanguage
   onLanguageChange: (language: SupportedLanguage) => void
   readAloudEnabled: boolean
@@ -133,7 +134,7 @@ function ReadAloudToggle({
   )
 }
 
-export function Header({ page, compactChat = false, onNavigate, language, onLanguageChange, readAloudEnabled, onReadAloudChange, textSizeLevel, onTextSizeChange, textSizeOptions }: HeaderProps) {
+export function Header({ page, compactChat = false, onNavigate, onAdvisorHome, language, onLanguageChange, readAloudEnabled, onReadAloudChange, textSizeLevel, onTextSizeChange, textSizeOptions }: HeaderProps) {
   const ui = getUiStrings(language)
   const readAloudAvailable = isReadAloudSupported(language)
   const [menuOpen, setMenuOpen] = useState(false)
@@ -178,9 +179,10 @@ export function Header({ page, compactChat = false, onNavigate, language, onLang
             className="site-header__brand"
             onClick={ (e) => {
               e.preventDefault()
-              navTo('chat')
+              closeMenu()
+              onAdvisorHome()
             } }
-            aria-label="Goodwill AI Career Center — Career Advisor"
+            aria-label="Goodwill AI Career Center — return to Career Advisor home"
           >
             <GoodwillLogo wordmarkSize={ 20 } logoHeight={ compactChat ? 32 : 36 } hideWordmark={ compactChat } />
           </a>
