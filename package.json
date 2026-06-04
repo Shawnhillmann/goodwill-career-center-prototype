@@ -35,6 +35,9 @@
     "vitest": "^3.2.4",
     "jsdom": "^26.1.0"
   },
+  "optionalDependencies": {
+    "playwright": "^1.52.0"
+  },
   "dependencies": {
     "@thednp/dommatrix": "^2.0.12",
     "cors": "^2.8.6",

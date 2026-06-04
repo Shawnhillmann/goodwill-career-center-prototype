@@ -42,7 +42,7 @@ export function htmlToPlainText(html: string): string {
 const CONFIG_HEAVY_RE =
   /\b(webpack|chunk|__typename|application\/json|function\s*\(|=>\s*\{|var\s+[a-z0-9_$]+\s*=|window\.|document\.|stylesheet|polyfill)\b/i
 
-const JOB_SIGNAL_RE =
+export const JOB_SIGNAL_RE =
   /\b(responsibilit|qualificat|requirement|experience|description|apply|salary|benefit|position|role|duties|skills|education|location|full[- ]?time|part[- ]?time)\b/i
 
 const CHROME_BOILERPLATE_RE =
@@ -155,7 +155,7 @@ function extractEscapedJsonParseLiteral(html: string, marker: string): unknown |
   }
 }
 
-function findJobRecords(value: unknown, out: Record<string, unknown>[], depth = 0): void {
+export function findJobRecords(value: unknown, out: Record<string, unknown>[], depth = 0): void {
   if (depth > 18 || out.length >= 6) return
   if (!value || typeof value !== 'object') return
 
@@ -232,8 +232,45 @@ export function formatJobRecord(record: Record<string, unknown>): string {
   return parts.join('\n\n')
 }
 
+const HYDRATION_MARKERS = [
+  '__staticRouterHydrationData',
+  '__remixContext',
+  '__NEXT_DATA__',
+  '__INITIAL_STATE__',
+  '__APOLLO_STATE__',
+  '__PRELOADED_STATE__',
+  '__NUXT__',
+]
+
+export function collectEmbeddedJobRecords(html: string): Record<string, unknown>[] {
+  const records: Record<string, unknown>[] = []
+
+  for (const marker of HYDRATION_MARKERS) {
+    const data = extractEscapedJsonParseLiteral(html, marker)
+    if (data) findJobRecords(data, records)
+  }
+
+  const nextScript = html.match(/<script[^>]*id=["']__NEXT_DATA__["'][^>]*>([\s\S]*?)<\/script>/i)
+  if (nextScript?.[1]) {
+    try {
+      findJobRecords(JSON.parse(nextScript[1].trim()) as unknown, records)
+    } catch {
+      // ignore
+    }
+  }
+
+  const seen = new Set<string>()
+  return records.filter((r) => {
+    const desc = typeof r.description === 'string' ? r.description.slice(0, 40) : ''
+    const key = JSON.stringify([r.postingTitle, r.title, r.name, desc])
+    if (seen.has(key)) return false
+    seen.add(key)
+    return true
+  })
+}
+
 function extractHydrationJobText(html: string): string[] {
-  const markers = ['__staticRouterHydrationData', '__remixContext', '__NEXT_DATA__']
+  const markers = HYDRATION_MARKERS
   const texts: string[] = []
 
   for (const marker of markers) {

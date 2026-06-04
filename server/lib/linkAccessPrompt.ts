@@ -76,13 +76,18 @@ export function buildFetchedPagesPromptBlock(pages: PageFetchOutcome[]): string 
     }
     const jobBoardHint = /\b(indeed|linkedin|glassdoor|ziprecruiter|monster)\./i.test(page.url)
       ? 'Likely a job board that blocks automated access—mention this warmly in your reply.'
-      : /\b(explore\.jobs\.|jobs\.)/i.test(page.url)
-        ? 'If details are missing, the posting may load via JavaScript—suggest pasting the job description.'
-        : ''
+      : /\b(workforcenow|adp\.com)\b/i.test(page.url)
+        ? 'ADP/WorkforceNow often shows a browser compatibility page to assistants—suggest pasting the job description.'
+        : /\b(explore\.jobs\.|jobs\.)/i.test(page.url)
+          ? 'If details are missing, the posting may load via JavaScript—suggest pasting the job description.'
+          : ''
+    const actionHint = page.recommendedUserAction ? `Suggested next step: ${ page.recommendedUserAction }` : ''
     return [
       `--- User-provided link ${ index + 1 } (fetch failed) ---`,
       `URL: ${ page.url }`,
-      `Error: ${ page.error ?? 'Could not load page.' }`,
+      `Error: ${ page.error ?? page.failureReason ?? 'Could not load page.' }`,
+      page.confidence === 'low' ? 'Extraction confidence was low; do NOT invent job details.' : '',
+      actionHint,
       jobBoardHint,
       'Use LINK FETCH FAILED guidance: some sites block assistants; suggest employer direct link or paste page text. Do not say "I can\'t access the web".',
       '--- End link ---',
