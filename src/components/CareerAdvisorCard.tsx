@@ -384,7 +384,7 @@ export function CareerAdvisorCard({
     if (chatEmpty) onMobileHeaderCompactChange?.(false)
   }, [chatEmpty, onChatActiveChange, onMobileHeaderCompactChange])
 
-  useMobileChatViewport(mobileChatLayout)
+  useMobileChatViewport(mobileChatLayout && !chatEmpty)
 
   const chatIsLive = awaitingAdvisor || messages.some((m) => m.streaming)
 
@@ -785,7 +785,7 @@ export function CareerAdvisorCard({
   const canSend = !uploading && (draft.trim().length > 0 || Boolean(pendingAttachment))
 
   useLayoutEffect(() => {
-    if (!mobileChatLayout) {
+    if (!mobileChatLayout || chatEmpty) {
       document.documentElement.style.removeProperty('--chat-composer-height')
       return
     }
@@ -1028,7 +1028,7 @@ export function CareerAdvisorCard({
         </div>
       ) : null}
 
-      {chatEmpty && !mobileChatLayout ? (
+      {chatEmpty ? (
         <div className="advisor-card__dock">{ composerForm }</div>
       ) : null}
 
@@ -1042,7 +1042,7 @@ export function CareerAdvisorCard({
       ) : null}
     </section>
 
-    {mobileChatLayout ? (
+    {!chatEmpty && mobileChatLayout ? (
       <div
         ref={ composerDockRef }
         className="advisor-card__dock advisor-card__dock--chat-only advisor-card__composer-dock advisor-card__composer-dock--mobile-fixed"

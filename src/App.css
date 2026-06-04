@@ -1900,14 +1900,10 @@ button {
     overflow: visible;
   }
 
-  .advisor-card--landing .advisor-card__dock:not(.advisor-card__composer-dock--mobile-fixed) {
+  .advisor-card--landing .advisor-card__dock {
     flex-shrink: 0;
     margin-top: 0.5rem;
     padding-top: 0;
-  }
-
-  .app--chat-landing .advisor-card--landing {
-    padding-bottom: calc(1rem + var(--chat-composer-height, 5.5rem));
   }
 }
 
