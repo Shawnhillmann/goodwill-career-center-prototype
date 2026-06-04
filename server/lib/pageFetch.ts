@@ -1,7 +1,17 @@
-const FETCH_TIMEOUT_MS = 10_000
-const MAX_BYTES = 512_000
+import {
+  extractHtmlTitle,
+  extractReadableContentFromHtml,
+  isLowQualityPageText,
+} from './pageContentExtract.js'
+import { fetchSmartRecruitersJobText } from './smartRecruitersFetch.js'
+
+const FETCH_TIMEOUT_MS = 12_000
+const MAX_BYTES = 768_000
 const MAX_TEXT_CHARS = 14_000
 const MAX_REDIRECTS = 3
+
+const BROWSER_USER_AGENT =
+  'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36'
 
 function isPrivateOrLocalHost(hostname: string): boolean {
   const h = hostname.toLowerCase().replace(/^\[|\]$/g, '')
@@ -25,35 +35,6 @@ export function validateFetchableUrl(raw: string): URL | null {
   }
 }
 
-function decodeHtmlEntities(text: string): string {
-  return text
-    .replace(/&nbsp;/gi, ' ')
-    .replace(/&amp;/gi, '&')
-    .replace(/&lt;/gi, '<')
-    .replace(/&gt;/gi, '>')
-    .replace(/&quot;/gi, '"')
-    .replace(/&#39;/gi, "'")
-    .replace(/&#(\d+);/g, (_, code) => String.fromCharCode(Number(code)))
-}
-
-function htmlToPlainText(html: string): string {
-  let s = html
-  s = s.replace(/<script[\s\S]*?<\/script>/gi, ' ')
-  s = s.replace(/<style[\s\S]*?<\/style>/gi, ' ')
-  s = s.replace(/<noscript[\s\S]*?<\/noscript>/gi, ' ')
-  const titleMatch = s.match(/<title[^>]*>([\s\S]*?)<\/title>/i)
-  const title = decodeHtmlEntities(
-    titleMatch?.[1]?.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim() ?? '',
-  )
-  s = s.replace(/<[^>]+>/g, ' ')
-  s = s.replace(/\s+/g, ' ').trim()
-  s = decodeHtmlEntities(s)
-  if (title && !s.toLowerCase().startsWith(title.toLowerCase())) {
-    s = title ? `${ title }\n\n${ s }` : s
-  }
-  return s.slice(0, MAX_TEXT_CHARS)
-}
-
 export type PageFetchOutcome = {
   url: string
   ok: boolean
@@ -61,6 +42,18 @@ export type PageFetchOutcome = {
   title?: string
   text?: string
   error?: string
+}
+
+async function trySupplementalJobText(url: URL, html: string, title: string): Promise<string | null> {
+  const sr = await fetchSmartRecruitersJobText(url)
+  if (sr) return sr.slice(0, MAX_TEXT_CHARS)
+
+  const extracted = extractReadableContentFromHtml(html)
+  if (extracted.text && extracted.source !== 'html' && !isLowQualityPageText(extracted.text, title)) {
+    return extracted.text
+  }
+
+  return null
 }
 
 async function fetchOnce(url: URL, redirectCount: number): Promise<PageFetchOutcome> {
@@ -72,10 +65,10 @@ async function fetchOnce(url: URL, redirectCount: number): Promise<PageFetchOutc
       redirect: redirectCount >= MAX_REDIRECTS ? 'manual' : 'follow',
       signal: controller.signal,
       headers: {
-        Accept: 'text/html,application/xhtml+xml,text/plain;q=0.9,*/*;q=0.8',
+        Accept:
+          'text/html,application/xhtml+xml,application/xml;q=0.9,text/plain;q=0.8,application/json;q=0.5,*/*;q=0.7',
         'Accept-Language': 'en-US,en;q=0.9',
-        'User-Agent':
-          'Mozilla/5.0 (compatible; GoodwillAICareerCenter/1.0; +https://goodwill.org; user-provided-link-review)',
+        'User-Agent': BROWSER_USER_AGENT,
       },
     })
 
@@ -121,28 +114,42 @@ async function fetchOnce(url: URL, redirectCount: number): Promise<PageFetchOutc
     }
 
     const raw = Buffer.concat(chunks).toString('utf8')
-    const text = contentType.includes('html') ? htmlToPlainText(raw) : raw.replace(/\s+/g, ' ').trim().slice(0, MAX_TEXT_CHARS)
 
-    if (!text || text.length < 40) {
+    if (contentType.includes('json') && !contentType.includes('html')) {
+      const text = raw.replace(/\s+/g, ' ').trim().slice(0, MAX_TEXT_CHARS)
+      if (text.length < 40) {
+        return { url: url.toString(), ok: false, error: 'Could not extract readable text from this response.' }
+      }
+      return { url: url.toString(), ok: true, statusCode: response.status, text }
+    }
+
+    const title = extractHtmlTitle(raw)
+    let extracted = extractReadableContentFromHtml(raw)
+    let text = extracted.text
+
+    if (!text || isLowQualityPageText(text, title)) {
+      const supplemental = await trySupplementalJobText(url, raw, title)
+      if (supplemental) {
+        text = supplemental
+        extracted = { title, text, source: 'structured' }
+      }
+    }
+
+    if (!text || text.length < 40 || isLowQualityPageText(text, title)) {
       return {
         url: url.toString(),
         ok: false,
         statusCode: response.status,
         error:
-          'Could not extract readable text from this page (common on job boards like Indeed). Suggest an employer direct link or pasted job description.',
+          'Could not extract readable job or page content (this site may load details with JavaScript only). Try pasting the job description or an employer career-page link.',
       }
     }
-
-    const titleMatch = raw.match(/<title[^>]*>([\s\S]*?)<\/title>/i)
-    const title = decodeHtmlEntities(
-      titleMatch?.[1]?.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim() ?? '',
-    )
 
     return {
       url: url.toString(),
       ok: true,
       statusCode: response.status,
-      title,
+      title: title || extracted.title,
       text,
     }
   } catch (err: unknown) {

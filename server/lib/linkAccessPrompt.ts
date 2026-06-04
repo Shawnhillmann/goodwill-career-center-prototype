@@ -76,7 +76,9 @@ export function buildFetchedPagesPromptBlock(pages: PageFetchOutcome[]): string 
     }
     const jobBoardHint = /\b(indeed|linkedin|glassdoor|ziprecruiter|monster)\./i.test(page.url)
       ? 'Likely a job board that blocks automated access—mention this warmly in your reply.'
-      : ''
+      : /\b(explore\.jobs\.|jobs\.)/i.test(page.url)
+        ? 'If details are missing, the posting may load via JavaScript—suggest pasting the job description.'
+        : ''
     return [
       `--- User-provided link ${ index + 1 } (fetch failed) ---`,
       `URL: ${ page.url }`,
