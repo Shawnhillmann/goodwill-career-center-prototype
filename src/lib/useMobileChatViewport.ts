@@ -14,10 +14,18 @@ export function useMobileChatViewport(enabled: boolean) {
     const vv = window.visualViewport
     if (!vv) return
 
+    let frame = 0
+    let lastLift = -1
+
     const sync = () => {
-      const keyboardLift = Math.max(0, window.innerHeight - vv.height - vv.offsetTop)
-      document.documentElement.style.setProperty('--chat-keyboard-offset', `${ keyboardLift }px`)
-      document.documentElement.style.setProperty('--chat-vvh', `${ vv.height }px`)
+      cancelAnimationFrame(frame)
+      frame = requestAnimationFrame(() => {
+        const keyboardLift = Math.max(0, window.innerHeight - vv.height - vv.offsetTop)
+        if (Math.abs(keyboardLift - lastLift) < 2) return
+        lastLift = keyboardLift
+        document.documentElement.style.setProperty('--chat-keyboard-offset', `${ keyboardLift }px`)
+        document.documentElement.style.setProperty('--chat-vvh', `${ vv.height }px`)
+      })
     }
 
     sync()
@@ -26,6 +34,7 @@ export function useMobileChatViewport(enabled: boolean) {
     window.addEventListener('orientationchange', sync)
 
     return () => {
+      cancelAnimationFrame(frame)
       vv.removeEventListener('resize', sync)
       vv.removeEventListener('scroll', sync)
       window.removeEventListener('orientationchange', sync)

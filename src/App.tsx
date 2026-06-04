@@ -11,6 +11,7 @@ import { ResourcesPage } from './pages/ResourcesPage'
 import { LiveSupportPage } from './pages/LiveSupportPage'
 import { applyPageHash, hashToPage, type AppPage } from './lib/appNavigation'
 import { warmApiBackend } from './lib/warmApi'
+import { useMediaQuery } from './lib/useMediaQuery'
 
 export default function App() {
   const [page, setPage] = useState<AppPage>(() => hashToPage(window.location.hash))
@@ -24,6 +25,8 @@ export default function App() {
   })
   const [textSizeLevel, setTextSizeLevel] = useState<TextSizeLevel>(() => loadTextSizeLevel())
   const [chatActive, setChatActive] = useState(false)
+  const [mobileHeaderCompact, setMobileHeaderCompact] = useState(false)
+  const mobileChatLayout = useMediaQuery('(max-width: 1023px)')
 
   useEffect(() => {
     warmApiBackend()
@@ -78,6 +81,10 @@ export default function App() {
     <div
       className={ `app${
         page === 'chat' ? (chatActive ? ' app--chat-active' : ' app--chat-landing') : ''
+      }${
+        page === 'chat' && chatActive && mobileChatLayout && !mobileHeaderCompact
+          ? ' app--chat-active-peek'
+          : ''
       }` }
       id="top"
       lang={ langTag }
@@ -85,7 +92,7 @@ export default function App() {
     >
       <Header
         page={ page }
-        compactChat={ page === 'chat' && chatActive }
+        compactChat={ page === 'chat' && chatActive && mobileHeaderCompact }
         onNavigate={ navigate }
         language={ language }
         onLanguageChange={ setLanguage }
@@ -107,6 +114,7 @@ export default function App() {
                 language={ language }
                 readAloudEnabled={ readAloudEnabled && isReadAloudSupported(language) }
                 onChatActiveChange={ setChatActive }
+                onMobileHeaderCompactChange={ setMobileHeaderCompact }
               />
             </div>
             <HomeExploreCards language={ language } onNavigate={ navigate } />

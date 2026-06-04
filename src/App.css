@@ -3208,6 +3208,7 @@ button {
 /* ——— Mobile native chat (active conversation) ——— */
 @media (max-width: 1023px) {
   .app--chat-active {
+    --chat-composer-height: 5.5rem;
     height: 100dvh;
     height: 100svh;
     overflow: hidden;
@@ -3216,6 +3217,26 @@ button {
   .app--chat-active .site-footer,
   .app--chat-active .home-explore-band {
     display: none;
+  }
+
+  .app--chat-active.app--chat-active-peek {
+    height: auto;
+    min-height: 100dvh;
+    min-height: 100svh;
+    overflow: auto;
+  }
+
+  .app--chat-active.app--chat-active-peek .app__main--chat {
+    overflow: visible;
+  }
+
+  .app--chat-active.app--chat-active-peek .chat-view {
+    overflow: visible;
+  }
+
+  .app--chat-active.app--chat-active-peek .site-footer,
+  .app--chat-active.app--chat-active-peek .home-explore-band {
+    display: block;
   }
 
   .app--chat-active .app__main--chat {
@@ -3323,6 +3344,9 @@ button {
     -webkit-backdrop-filter: blur(10px);
     border-top: 1px solid rgba(212, 222, 235, 0.85);
     box-shadow: 0 -4px 18px rgba(10, 30, 66, 0.06);
+    transform: translateZ(0);
+    will-change: bottom;
+    contain: layout style;
   }
 
   .app--chat-active .advisor-card__composer-dock .advisor-card__composer {
@@ -3354,7 +3378,11 @@ button {
     display: none;
   }
 
-  /* Compact header during active chat */
+  /* Compact header during active chat (expanded again when user scrolls up) */
+  .site-header__bar--mobile {
+    transition: opacity 0.2s ease;
+  }
+
   .site-header--chat-compact .site-header__shell {
     padding-bottom: 0;
   }

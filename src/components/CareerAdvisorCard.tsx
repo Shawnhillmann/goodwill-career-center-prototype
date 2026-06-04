@@ -66,6 +66,8 @@ type CareerAdvisorCardProps = {
   language: SupportedLanguage
   readAloudEnabled: boolean
   onChatActiveChange?: (active: boolean) => void
+  /** Mobile active chat: compact header when pinned to the latest messages. */
+  onMobileHeaderCompactChange?: (compact: boolean) => void
 }
 
 function nextId(): string {
@@ -90,7 +92,12 @@ function ThinkingIndicator({ label, text }: { label: string; text: string }) {
   )
 }
 
-export function CareerAdvisorCard({ language, readAloudEnabled, onChatActiveChange }: CareerAdvisorCardProps) {
+export function CareerAdvisorCard({
+  language,
+  readAloudEnabled,
+  onChatActiveChange,
+  onMobileHeaderCompactChange,
+}: CareerAdvisorCardProps) {
   const formId = useId()
   const inputRef = useRef<HTMLTextAreaElement>(null)
   const chatScrollRef = useRef<HTMLDivElement>(null)
@@ -371,53 +378,86 @@ export function CareerAdvisorCard({ language, readAloudEnabled, onChatActiveChan
   useEffect(() => {
     onChatActiveChange?.(!chatEmpty)
     if (!chatEmpty) stickToBottomRef.current = true
-  }, [chatEmpty, onChatActiveChange])
+    if (chatEmpty) onMobileHeaderCompactChange?.(false)
+  }, [chatEmpty, onChatActiveChange, onMobileHeaderCompactChange])
 
   useMobileChatViewport(mobileChatLayout && !chatEmpty)
 
   const chatIsLive = awaitingAdvisor || messages.some((m) => m.streaming)
 
-  const scrollMessagesToEnd = useCallback((behavior: ScrollBehavior = 'smooth') => {
-    const anchor = chatEndRef.current
-    if (anchor) {
-      anchor.scrollIntoView({ block: 'end', behavior })
-      return
-    }
+  const scrollChatScrollerToEnd = useCallback((behavior: ScrollBehavior = 'auto') => {
     const scroller = chatScrollRef.current
     if (!scroller) return
-    const maxScroll = Math.max(0, scroller.scrollHeight - scroller.clientHeight)
+    const top = Math.max(0, scroller.scrollHeight - scroller.clientHeight)
     if (behavior === 'auto') {
-      scroller.scrollTop = maxScroll
+      scroller.scrollTop = top
       return
     }
-    scroller.scrollTo({ top: maxScroll, behavior })
+    scroller.scrollTo({ top, behavior })
   }, [])
+
+  const scrollMessagesToEnd = useCallback(
+    (behavior: ScrollBehavior = 'smooth') => {
+      if (mobileChatLayout) {
+        scrollChatScrollerToEnd(behavior === 'smooth' ? 'smooth' : 'auto')
+        return
+      }
+      const anchor = chatEndRef.current
+      if (anchor) {
+        anchor.scrollIntoView({ block: 'end', behavior })
+        return
+      }
+      scrollChatScrollerToEnd(behavior)
+    },
+    [mobileChatLayout, scrollChatScrollerToEnd],
+  )
 
   const handleChatScroll = useCallback(() => {
     const scroller = chatScrollRef.current
     if (!scroller) return
     const distanceFromBottom = scroller.scrollHeight - scroller.scrollTop - scroller.clientHeight
     stickToBottomRef.current = distanceFromBottom < 96
-  }, [])
+    if (mobileChatLayout && !chatEmpty) {
+      onMobileHeaderCompactChange?.(distanceFromBottom < 72)
+    }
+  }, [mobileChatLayout, chatEmpty, onMobileHeaderCompactChange])
 
   useLayoutEffect(() => {
     if (!stickToBottomRef.current) return
     const behavior = chatIsLive || messages.length <= 2 ? 'auto' : 'smooth'
     scrollMessagesToEnd(behavior)
-  }, [messages, awaitingAdvisor, chatIsLive, scrollMessagesToEnd])
+    if (mobileChatLayout && !chatEmpty) {
+      const scroller = chatScrollRef.current
+      if (scroller) {
+        const distanceFromBottom =
+          scroller.scrollHeight - scroller.scrollTop - scroller.clientHeight
+        onMobileHeaderCompactChange?.(distanceFromBottom < 72)
+      }
+    }
+  }, [
+    messages,
+    awaitingAdvisor,
+    chatIsLive,
+    scrollMessagesToEnd,
+    mobileChatLayout,
+    chatEmpty,
+    onMobileHeaderCompactChange,
+  ])
 
   useEffect(() => {
-    if (!chatIsLive || chatEmpty) return
+    if (!mobileChatLayout) onMobileHeaderCompactChange?.(false)
+  }, [mobileChatLayout, onMobileHeaderCompactChange])
+
+  useEffect(() => {
+    if (!chatIsLive || chatEmpty || !mobileChatLayout) return
     let frame = 0
     const followDuringLive = () => {
-      if (stickToBottomRef.current) {
-        chatEndRef.current?.scrollIntoView({ block: 'end', behavior: 'auto' })
-      }
+      if (stickToBottomRef.current) scrollChatScrollerToEnd('auto')
       frame = requestAnimationFrame(followDuringLive)
     }
     frame = requestAnimationFrame(followDuringLive)
     return () => cancelAnimationFrame(frame)
-  }, [chatIsLive, chatEmpty])
+  }, [chatIsLive, chatEmpty, mobileChatLayout, scrollChatScrollerToEnd])
 
   useEffect(() => {
     if (!chatIsLive || chatEmpty) return
@@ -426,6 +466,10 @@ export function CareerAdvisorCard({ language, readAloudEnabled, onChatActiveChan
 
     const followEnd = () => {
       if (!stickToBottomRef.current) return
+      if (mobileChatLayout) {
+        scrollChatScrollerToEnd('auto')
+        return
+      }
       chatEndRef.current?.scrollIntoView({ block: 'end', behavior: 'auto' })
     }
 
@@ -441,7 +485,7 @@ export function CareerAdvisorCard({ language, readAloudEnabled, onChatActiveChan
       mo.disconnect()
       ro.disconnect()
     }
-  }, [chatIsLive, chatEmpty, messages.length])
+  }, [chatIsLive, chatEmpty, messages.length, mobileChatLayout, scrollChatScrollerToEnd])
 
   useEffect(() => {
     if (awaitingAdvisor) {
@@ -607,7 +651,9 @@ export function CareerAdvisorCard({ language, readAloudEnabled, onChatActiveChan
     setPendingAttachment(null)
     setPendingUploadName(null)
     if (fileInputRef.current) fileInputRef.current.value = ''
-    inputRef.current?.focus()
+    requestAnimationFrame(() => {
+      inputRef.current?.focus({ preventScroll: true })
+    })
   }
 
   const handleQuickAction = (action: QuickActionId) => {
@@ -688,27 +734,30 @@ export function CareerAdvisorCard({ language, readAloudEnabled, onChatActiveChan
   const composerHasAttachment = Boolean(pendingUploadName || pendingAttachment)
   const canSend = !uploading && (draft.trim().length > 0 || Boolean(pendingAttachment))
 
-  useEffect(() => {
-    const dock = composerDockRef.current
-    if (!mobileChatLayout || !dock || chatEmpty) {
+  useLayoutEffect(() => {
+    if (!mobileChatLayout || chatEmpty) {
       document.documentElement.style.removeProperty('--chat-composer-height')
       return
     }
 
+    const dock = composerDockRef.current
+    if (!dock) return
+
+    let lastHeight = 0
     const syncHeight = () => {
-      document.documentElement.style.setProperty('--chat-composer-height', `${ dock.offsetHeight }px`)
+      const height = Math.ceil(dock.getBoundingClientRect().height)
+      if (height === lastHeight) return
+      lastHeight = height
+      document.documentElement.style.setProperty('--chat-composer-height', `${ height }px`)
     }
 
     syncHeight()
     const ro = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(syncHeight) : null
     ro?.observe(dock)
-    window.addEventListener('resize', syncHeight)
     return () => {
       ro?.disconnect()
-      window.removeEventListener('resize', syncHeight)
-      document.documentElement.style.removeProperty('--chat-composer-height')
     }
-  }, [chatEmpty, composerHasAttachment, draft, mobileChatLayout])
+  }, [chatEmpty, composerHasAttachment, draft, mobileChatLayout, messages.length])
 
   const composerForm = (
     <form
