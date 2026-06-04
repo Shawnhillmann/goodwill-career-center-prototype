@@ -9,6 +9,7 @@ import { TextSizeControl, type TextSizeOption } from './TextSizeControl'
 
 type HeaderProps = {
   page: AppPage
+  compactChat?: boolean
   onNavigate: (page: AppPage) => void
   language: SupportedLanguage
   onLanguageChange: (language: SupportedLanguage) => void
@@ -132,7 +133,7 @@ function ReadAloudToggle({
   )
 }
 
-export function Header({ page, onNavigate, language, onLanguageChange, readAloudEnabled, onReadAloudChange, textSizeLevel, onTextSizeChange, textSizeOptions }: HeaderProps) {
+export function Header({ page, compactChat = false, onNavigate, language, onLanguageChange, readAloudEnabled, onReadAloudChange, textSizeLevel, onTextSizeChange, textSizeOptions }: HeaderProps) {
   const ui = getUiStrings(language)
   const readAloudAvailable = isReadAloudSupported(language)
   const [menuOpen, setMenuOpen] = useState(false)
@@ -158,7 +159,7 @@ export function Header({ page, onNavigate, language, onLanguageChange, readAloud
   }
 
   return (
-    <header className="site-header" dir="ltr">
+    <header className={ `site-header${ compactChat ? ' site-header--chat-compact' : '' }` } dir="ltr">
       <div className="site-header__shell">
         <div className="site-header__inner site-header__inner--top">
           <button
@@ -181,7 +182,7 @@ export function Header({ page, onNavigate, language, onLanguageChange, readAloud
             } }
             aria-label="Goodwill AI Career Center — refresh page"
           >
-            <GoodwillLogo wordmarkSize={ 20 } logoHeight={ 36 } />
+            <GoodwillLogo wordmarkSize={ 20 } logoHeight={ compactChat ? 32 : 36 } hideWordmark={ compactChat } />
           </a>
 
           <div className="site-header__right site-header__right--desktop">
@@ -288,6 +289,18 @@ export function Header({ page, onNavigate, language, onLanguageChange, readAloud
               { ui.resources }
             </button>
             <div className="site-header__drawer-settings">
+              <LanguageMenu
+                language={ language }
+                onLanguageChange={ onLanguageChange }
+                ariaLabel={ ui.language }
+                showGlobe
+              />
+              <ReadAloudToggle
+                ui={ ui }
+                readAloudAvailable={ readAloudAvailable }
+                readAloudEnabled={ readAloudEnabled }
+                onReadAloudChange={ onReadAloudChange }
+              />
               <TextSizeControl
                 level={ textSizeLevel }
                 onChange={ onTextSizeChange }

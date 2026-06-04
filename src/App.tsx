@@ -23,6 +23,7 @@ export default function App() {
     return saved === 'true'
   })
   const [textSizeLevel, setTextSizeLevel] = useState<TextSizeLevel>(() => loadTextSizeLevel())
+  const [chatActive, setChatActive] = useState(false)
 
   useEffect(() => {
     warmApiBackend()
@@ -75,13 +76,16 @@ export default function App() {
 
   return (
     <div
-      className={ `app${ page === 'chat' ? ' app--chat-landing' : '' }` }
+      className={ `app${
+        page === 'chat' ? (chatActive ? ' app--chat-active' : ' app--chat-landing') : ''
+      }` }
       id="top"
       lang={ langTag }
       dir={ language === 'ar' ? 'rtl' : 'ltr' }
     >
       <Header
         page={ page }
+        compactChat={ page === 'chat' && chatActive }
         onNavigate={ navigate }
         language={ language }
         onLanguageChange={ setLanguage }
@@ -102,6 +106,7 @@ export default function App() {
               <CareerAdvisorCard
                 language={ language }
                 readAloudEnabled={ readAloudEnabled && isReadAloudSupported(language) }
+                onChatActiveChange={ setChatActive }
               />
             </div>
             <HomeExploreCards language={ language } onNavigate={ navigate } />

@@ -45,6 +45,7 @@ import { ResumePreview } from './ResumePreview'
 import { MessageActionsMenu } from './MessageActionsMenu'
 import { getQuickActionCopy, listMobileQuickActions, listQuickActions, type QuickActionId } from '../quickActions'
 import { QuickActionCarousel } from './QuickActionCarousel'
+import { useMobileChatViewport } from '../lib/useMobileChatViewport'
 
 type ChatRole = 'user' | 'advisor'
 
@@ -63,6 +64,7 @@ type ChatMessage = {
 type CareerAdvisorCardProps = {
   language: SupportedLanguage
   readAloudEnabled: boolean
+  onChatActiveChange?: (active: boolean) => void
 }
 
 function nextId(): string {
@@ -87,10 +89,13 @@ function ThinkingIndicator({ label, text }: { label: string; text: string }) {
   )
 }
 
-export function CareerAdvisorCard({ language, readAloudEnabled }: CareerAdvisorCardProps) {
+export function CareerAdvisorCard({ language, readAloudEnabled, onChatActiveChange }: CareerAdvisorCardProps) {
   const formId = useId()
   const inputRef = useRef<HTMLTextAreaElement>(null)
+  const chatScrollRef = useRef<HTMLDivElement>(null)
   const chatEndRef = useRef<HTMLDivElement>(null)
+  const composerDockRef = useRef<HTMLDivElement>(null)
+  const stickToBottomRef = useRef(true)
   const recognitionRef = useRef<any>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [draft, setDraft] = useState('')
@@ -350,6 +355,7 @@ export function CareerAdvisorCard({ language, readAloudEnabled }: CareerAdvisorC
         Boolean(docText?.trim()),
         opts?.quickAction,
       )
+      stickToBottomRef.current = true
       setMessages((prev) => [...prev, userMessage])
       playUserMessageSound()
       setAwaitingAdvisor(true)
@@ -358,9 +364,36 @@ export function CareerAdvisorCard({ language, readAloudEnabled }: CareerAdvisorC
     [documentContext, messages, queueAdvisorReply, toApiMessages],
   )
 
+  const chatEmpty = messages.length === 0
+
   useEffect(() => {
-    chatEndRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' })
-  }, [messages, awaitingAdvisor])
+    onChatActiveChange?.(!chatEmpty)
+    if (!chatEmpty) stickToBottomRef.current = true
+  }, [chatEmpty, onChatActiveChange])
+
+  useMobileChatViewport(!chatEmpty)
+
+  const scrollMessagesToEnd = useCallback((behavior: ScrollBehavior = 'smooth') => {
+    const scroller = chatScrollRef.current
+    if (!scroller) return
+    if (behavior === 'auto') {
+      scroller.scrollTop = scroller.scrollHeight
+      return
+    }
+    scroller.scrollTo({ top: scroller.scrollHeight, behavior })
+  }, [])
+
+  const handleChatScroll = useCallback(() => {
+    const scroller = chatScrollRef.current
+    if (!scroller) return
+    const distanceFromBottom = scroller.scrollHeight - scroller.scrollTop - scroller.clientHeight
+    stickToBottomRef.current = distanceFromBottom < 96
+  }, [])
+
+  useEffect(() => {
+    if (!stickToBottomRef.current) return
+    scrollMessagesToEnd(messages.length <= 1 ? 'auto' : 'smooth')
+  }, [messages, awaitingAdvisor, scrollMessagesToEnd])
 
   useEffect(() => {
     if (awaitingAdvisor) {
@@ -535,8 +568,6 @@ export function CareerAdvisorCard({ language, readAloudEnabled }: CareerAdvisorC
     inputRef.current?.focus()
   }
 
-  const chatEmpty = messages.length === 0
-
   const downloadDocument = async (content: string, format: 'docx' | 'pdf') => {
     const resp = await fetch('/api/document/export', {
       method: 'POST',
@@ -609,8 +640,115 @@ export function CareerAdvisorCard({ language, readAloudEnabled }: CareerAdvisorC
   const composerHasAttachment = Boolean(pendingUploadName || pendingAttachment)
   const canSend = !uploading && (draft.trim().length > 0 || Boolean(pendingAttachment))
 
+  useEffect(() => {
+    const dock = composerDockRef.current
+    if (!dock || chatEmpty) {
+      document.documentElement.style.removeProperty('--chat-composer-height')
+      return
+    }
+
+    const syncHeight = () => {
+      document.documentElement.style.setProperty('--chat-composer-height', `${ dock.offsetHeight }px`)
+    }
+
+    syncHeight()
+    const ro = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(syncHeight) : null
+    ro?.observe(dock)
+    window.addEventListener('resize', syncHeight)
+    return () => {
+      ro?.disconnect()
+      window.removeEventListener('resize', syncHeight)
+      document.documentElement.style.removeProperty('--chat-composer-height')
+    }
+  }, [chatEmpty, composerHasAttachment, draft])
+
+  const composerForm = (
+    <form
+      id={ `${ formId }-form` }
+      className={ `advisor-card__composer${ chatEmpty ? '' : ' advisor-card__composer--dock-top' }` }
+      onSubmit={ handleSubmit }
+      noValidate
+    >
+      <label htmlFor={ `${ formId }-input` } className="visually-hidden">
+        { ui.messageLabel }
+      </label>
+      <div className="advisor-card__composer-stack">
+        {composerHasAttachment ? (
+          <div className="composer-attachment" role="status" aria-live="polite">
+            <span className="composer-attachment__pill">
+              <FileText size={ 16 } strokeWidth={ 2 } aria-hidden />
+              <span className="composer-attachment__name">
+                { uploading ? ui.uploadingFile : (pendingAttachment?.name ?? pendingUploadName) }
+              </span>
+            </span>
+            <button
+              type="button"
+              className="composer-attachment__remove icon-btn"
+              aria-label={ ui.removeAttachment }
+              onClick={ clearPendingAttachment }
+              disabled={ uploading }
+            >
+              <X size={ 18 } strokeWidth={ 2 } aria-hidden />
+            </button>
+          </div>
+        ) : null}
+        <div className="advisor-card__input-shell advisor-card__input-shell--integrated">
+          <button
+            type="button"
+            className="text-btn text-btn--infield"
+            onClick={ handlePickFile }
+            disabled={ uploading }
+          >
+            <Paperclip size={ 20 } strokeWidth={ 2 } aria-hidden />
+            <span className="text-btn__label">{ ui.addFile }</span>
+          </button>
+          <input
+            ref={ fileInputRef }
+            type="file"
+            className="visually-hidden"
+            accept=".pdf,.docx,.txt"
+            onChange={ (e) => handleFileSelected(e.target.files?.[0] ?? null) }
+          />
+          <textarea
+            id={ `${ formId }-input` }
+            ref={ inputRef }
+            className="advisor-card__textarea advisor-card__textarea--integrated"
+            placeholder={ ui.placeholder }
+            rows={ 1 }
+            value={ draft }
+            onChange={ (e) => setDraft(e.target.value) }
+            onKeyDown={ (e) => {
+              if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault()
+                e.currentTarget.form?.requestSubmit()
+              }
+            } }
+          />
+          <button
+            type="button"
+            className={ `icon-btn icon-btn--infield icon-btn--mic${ listening ? ' icon-btn--active' : '' }` }
+            aria-label={ ui.voiceInputAria }
+            aria-pressed={ listening }
+            onClick={ toggleVoiceInput }
+            disabled={ !voiceInputAvailable }
+          >
+            <Mic size={ 22 } strokeWidth={ 2 } />
+          </button>
+          <button
+            type="submit"
+            className="send-btn send-btn--infield"
+            aria-label={ ui.sendMessageAria }
+            disabled={ !canSend }
+          >
+            <Send size={ 20 } strokeWidth={ 2.25 } />
+          </button>
+        </div>
+      </div>
+    </form>
+  )
+
   return (
-    <div className="career-advisor-stack">
+    <div className={ `career-advisor-stack${ chatEmpty ? '' : ' career-advisor-stack--active' }` }>
     <section
       className={ `advisor-card${ chatEmpty ? ' advisor-card--landing' : ' advisor-card--active-chat' }` }
       aria-labelledby={ chatEmpty ? `${ formId }-title` : undefined }
@@ -675,7 +813,14 @@ export function CareerAdvisorCard({ language, readAloudEnabled }: CareerAdvisorC
 
       {!chatEmpty ? (
         <div className="advisor-card__chat-pane">
-          <div className="advisor-card__chat" role="log" aria-live="polite" aria-relevant="additions">
+          <div
+            ref={ chatScrollRef }
+            className="advisor-card__chat"
+            role="log"
+            aria-live="polite"
+            aria-relevant="additions"
+            onScroll={ handleChatScroll }
+          >
             {messages.map((msg) =>
               msg.role === 'user' ? (
                 <div key={ msg.id } className="msg-row msg-row--user">
@@ -734,94 +879,25 @@ export function CareerAdvisorCard({ language, readAloudEnabled }: CareerAdvisorC
         </div>
       ) : null}
 
-      <div className={ `advisor-card__dock${ chatEmpty ? '' : ' advisor-card__dock--chat-only' }` }>
-        <form
-          id={ `${ formId }-form` }
-          className={ `advisor-card__composer${ chatEmpty ? '' : ' advisor-card__composer--dock-top' }` }
-          onSubmit={ handleSubmit }
-          noValidate
-        >
-          <label htmlFor={ `${ formId }-input` } className="visually-hidden">
-            { ui.messageLabel }
-          </label>
-          <div className="advisor-card__composer-stack">
-            {composerHasAttachment ? (
-              <div className="composer-attachment" role="status" aria-live="polite">
-                <span className="composer-attachment__pill">
-                  <FileText size={ 16 } strokeWidth={ 2 } aria-hidden />
-                  <span className="composer-attachment__name">
-                    { uploading ? ui.uploadingFile : (pendingAttachment?.name ?? pendingUploadName) }
-                  </span>
-                </span>
-                <button
-                  type="button"
-                  className="composer-attachment__remove icon-btn"
-                  aria-label={ ui.removeAttachment }
-                  onClick={ clearPendingAttachment }
-                  disabled={ uploading }
-                >
-                  <X size={ 18 } strokeWidth={ 2 } aria-hidden />
-                </button>
-              </div>
-            ) : null}
-            <div className="advisor-card__input-shell advisor-card__input-shell--integrated">
-              <button
-                type="button"
-                className="text-btn text-btn--infield"
-                onClick={ handlePickFile }
-                disabled={ uploading }
-              >
-                <Paperclip size={ 20 } strokeWidth={ 2 } aria-hidden />
-                <span className="text-btn__label">{ ui.addFile }</span>
-              </button>
-              <input
-                ref={ fileInputRef }
-                type="file"
-                className="visually-hidden"
-                accept=".pdf,.docx,.txt"
-                onChange={ (e) => handleFileSelected(e.target.files?.[0] ?? null) }
-              />
-              <textarea
-                id={ `${ formId }-input` }
-                ref={ inputRef }
-                className="advisor-card__textarea advisor-card__textarea--integrated"
-                placeholder={ ui.placeholder }
-                rows={ 1 }
-                value={ draft }
-                onChange={ (e) => setDraft(e.target.value) }
-                onKeyDown={ (e) => {
-                  if (e.key === 'Enter' && !e.shiftKey) {
-                    e.preventDefault()
-                    e.currentTarget.form?.requestSubmit()
-                  }
-                } }
-              />
-              <button
-                type="button"
-                className={ `icon-btn icon-btn--infield icon-btn--mic${ listening ? ' icon-btn--active' : '' }` }
-                aria-label={ ui.voiceInputAria }
-                aria-pressed={ listening }
-                onClick={ toggleVoiceInput }
-                disabled={ !voiceInputAvailable }
-              >
-                <Mic size={ 22 } strokeWidth={ 2 } />
-              </button>
-              <button
-                type="submit"
-                className="send-btn send-btn--infield"
-                aria-label={ ui.sendMessageAria }
-                disabled={ !canSend }
-              >
-                <Send size={ 20 } strokeWidth={ 2.25 } />
-              </button>
-            </div>
-          </div>
-        </form>
-      </div>
+      {chatEmpty ? (
+        <div className="advisor-card__dock">{ composerForm }</div>
+      ) : null}
     </section>
-    <p className="ai-disclaimer ai-disclaimer--below-chat" role="note">
-      { ui.aiDisclaimer }
-    </p>
+
+    {!chatEmpty ? (
+      <div
+        ref={ composerDockRef }
+        className="advisor-card__dock advisor-card__dock--chat-only advisor-card__composer-dock"
+      >
+        { composerForm }
+      </div>
+    ) : null}
+
+    {chatEmpty ? (
+      <p className="ai-disclaimer ai-disclaimer--welcome" role="note">
+        { ui.aiDisclaimer }
+      </p>
+    ) : null}
     </div>
   )
 }
