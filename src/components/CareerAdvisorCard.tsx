@@ -104,6 +104,7 @@ export function CareerAdvisorCard({
   const chatEndRef = useRef<HTMLDivElement>(null)
   const composerDockRef = useRef<HTMLDivElement>(null)
   const stickToBottomRef = useRef(true)
+  const chatIsLiveRef = useRef(false)
   const recognitionRef = useRef<any>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [draft, setDraft] = useState('')
@@ -422,10 +423,27 @@ export function CareerAdvisorCard({
     }
   }, [mobileChatLayout, chatEmpty, onMobileHeaderCompactChange])
 
+  const pinMobileChatToEnd = useCallback(() => {
+    scrollChatScrollerToEnd('auto')
+    requestAnimationFrame(() => {
+      scrollChatScrollerToEnd('auto')
+    })
+  }, [scrollChatScrollerToEnd])
+
   useLayoutEffect(() => {
+    const wasLive = chatIsLiveRef.current
+    chatIsLiveRef.current = chatIsLive
+
     if (!stickToBottomRef.current) return
-    const behavior = chatIsLive || messages.length <= 2 ? 'auto' : 'smooth'
+
+    const behavior =
+      mobileChatLayout || chatIsLive || messages.length <= 2 ? 'auto' : 'smooth'
     scrollMessagesToEnd(behavior)
+
+    if (mobileChatLayout && wasLive && !chatIsLive) {
+      pinMobileChatToEnd()
+    }
+
     if (mobileChatLayout && !chatEmpty) {
       const scroller = chatScrollRef.current
       if (scroller) {
@@ -442,6 +460,7 @@ export function CareerAdvisorCard({
     mobileChatLayout,
     chatEmpty,
     onMobileHeaderCompactChange,
+    pinMobileChatToEnd,
   ])
 
   useEffect(() => {
@@ -460,7 +479,7 @@ export function CareerAdvisorCard({
   }, [chatIsLive, chatEmpty, mobileChatLayout, scrollChatScrollerToEnd])
 
   useEffect(() => {
-    if (!chatIsLive || chatEmpty) return
+    if (chatEmpty) return
     const scroller = chatScrollRef.current
     if (!scroller) return
 
@@ -470,8 +489,11 @@ export function CareerAdvisorCard({
         scrollChatScrollerToEnd('auto')
         return
       }
+      if (!chatIsLive) return
       chatEndRef.current?.scrollIntoView({ block: 'end', behavior: 'auto' })
     }
+
+    if (!mobileChatLayout && !chatIsLive) return
 
     const mo = new MutationObserver(followEnd)
     mo.observe(scroller, { childList: true, subtree: true, characterData: true })
@@ -971,7 +993,7 @@ export function CareerAdvisorCard({
             {awaitingAdvisor ? (
               <ThinkingIndicator label={ ui.advisorThinkingAria } text={ ui.advisorThinkingLabel } />
             ) : null}
-            <div ref={ chatEndRef } aria-hidden />
+            <div ref={ chatEndRef } className="advisor-card__chat-anchor" aria-hidden />
           </div>
         </div>
       ) : null}
