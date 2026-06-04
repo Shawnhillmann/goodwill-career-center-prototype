@@ -2650,8 +2650,9 @@ button {
 
 .msg-menu__dropdown {
   position: absolute;
-  top: calc(100% + 0.35rem);
   right: 0;
+  bottom: calc(100% + 0.35rem);
+  top: auto;
   min-width: 11.5rem;
   padding: 0.35rem;
   border-radius: 0.65rem;
@@ -3426,8 +3427,27 @@ button {
     display: block;
   }
 
-  .app--chat-active .advisor-card__composer-dock {
+  .app--chat-active .advisor-card--active-chat {
+    display: flex;
+    flex-direction: column;
+    min-height: calc(100vh - 11rem);
+    min-height: calc(100dvh - 11rem);
+    max-height: calc(100vh - 6.5rem);
+    max-height: calc(100dvh - 6.5rem);
+  }
+
+  .app--chat-active .advisor-card--active-chat .advisor-card__chat-pane {
+    flex: 1 1 0;
+    min-height: 0;
+  }
+
+  .app--chat-active .advisor-card--active-chat .advisor-card__chat {
+    padding-bottom: 0.75rem;
+  }
+
+  .app--chat-active .advisor-card__composer-dock--in-card {
     position: static;
+    flex-shrink: 0;
     backdrop-filter: none;
     box-shadow: none;
     border-top: none;
