@@ -74,7 +74,12 @@ export default function App() {
   const langTag = supportedLanguages.find((l) => l.code === language)?.bcp47 ?? 'en-US'
 
   return (
-    <div className="app" id="top" lang={ langTag } dir={ language === 'ar' ? 'rtl' : 'ltr' }>
+    <div
+      className={ `app${ page === 'chat' ? ' app--chat-landing' : '' }` }
+      id="top"
+      lang={ langTag }
+      dir={ language === 'ar' ? 'rtl' : 'ltr' }
+    >
       <Header
         page={ page }
         onNavigate={ navigate }

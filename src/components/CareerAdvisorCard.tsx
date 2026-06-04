@@ -43,7 +43,8 @@ import {
 } from '../../shared/advisorMessage'
 import { ResumePreview } from './ResumePreview'
 import { MessageActionsMenu } from './MessageActionsMenu'
-import { listQuickActions, type QuickActionId } from '../quickActions'
+import { getQuickActionCopy, listMobileQuickActions, listQuickActions, type QuickActionId } from '../quickActions'
+import { QuickActionCarousel } from './QuickActionCarousel'
 
 type ChatRole = 'user' | 'advisor'
 
@@ -108,18 +109,31 @@ export function CareerAdvisorCard({ language, readAloudEnabled }: CareerAdvisorC
     [language],
   )
 
-  const quickActions = useMemo(() => {
-    const actions = listQuickActions(language)
-    const icons: Record<QuickActionId, typeof Compass> = {
+  const quickActionIcons: Record<QuickActionId, typeof Compass> = useMemo(
+    () => ({
       explore_careers: Compass,
       build_resume: FileText,
       help_apply: ClipboardList,
       practice_interviews: MessageSquare,
       career_plan: ListChecks,
       local_resources: MapPin,
-    }
-    return actions.map((action) => ({ ...action, icon: icons[action.id] }))
-  }, [language])
+    }),
+    [],
+  )
+
+  const quickActions = useMemo(() => {
+    return listQuickActions(language).map((action) => ({
+      ...action,
+      icon: quickActionIcons[action.id],
+    }))
+  }, [language, quickActionIcons])
+
+  const mobileQuickActions = useMemo(() => {
+    return listMobileQuickActions(language).map((action) => ({
+      ...action,
+      icon: quickActionIcons[action.id],
+    }))
+  }, [language, quickActionIcons])
 
   const speak = useCallback(
     (text: string) => {
@@ -505,8 +519,7 @@ export function CareerAdvisorCard({ language, readAloudEnabled }: CareerAdvisorC
   }
 
   const handleQuickAction = (action: QuickActionId) => {
-    const copy = quickActions.find((item) => item.id === action)
-    if (!copy) return
+    const copy = getQuickActionCopy(language, action)
     sendUserMessage(copy.starter, { source: 'quick_option', quickAction: action })
     inputRef.current?.focus()
   }
@@ -614,10 +627,12 @@ export function CareerAdvisorCard({ language, readAloudEnabled }: CareerAdvisorC
                   { ui.heroTitle }
                 </h1>
                 <p className="advisor-card__subtitle">{ ui.heroSubtitle }</p>
-                <p className="advisor-card__subtitle-prompt">{ ui.heroSubtitlePrompt }</p>
+                <p className="advisor-card__subtitle-prompt advisor-card__subtitle-prompt--desktop">
+                  { ui.heroSubtitlePrompt }
+                </p>
               </div>
 
-              <div className="advisor-card__quick" role="group" aria-label={ ui.quickActionsAria }>
+              <div className="advisor-card__quick advisor-card__quick--grid" role="group" aria-label={ ui.quickActionsAria }>
                 {quickActions.map(({ id, label, ariaLabel, icon: Icon }) => (
                   <button
                     key={ id }
@@ -634,6 +649,14 @@ export function CareerAdvisorCard({ language, readAloudEnabled }: CareerAdvisorC
                 ))}
               </div>
             </div>
+          </div>
+
+          <div className="advisor-card__quick-carousel">
+            <QuickActionCarousel
+              actions={ mobileQuickActions }
+              ariaLabel={ ui.quickActionsAria }
+              onSelect={ handleQuickAction }
+            />
           </div>
         </div>
       ) : null}
