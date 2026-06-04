@@ -55,63 +55,6 @@ export function QuickActionCarousel({ actions, ariaLabel, onSelect }: QuickActio
     }
   }, [syncActiveIndex, actions.length])
 
-  useEffect(() => {
-    const track = trackRef.current
-    if (!track) return
-
-    let dragging = false
-    let didDrag = false
-    let startX = 0
-    let startScrollLeft = 0
-
-    const onPointerDown = (e: PointerEvent) => {
-      if (e.button !== 0) return
-      dragging = true
-      didDrag = false
-      startX = e.clientX
-      startScrollLeft = track.scrollLeft
-      track.setPointerCapture(e.pointerId)
-      track.classList.add('quick-carousel__track--dragging')
-    }
-
-    const onPointerMove = (e: PointerEvent) => {
-      if (!dragging) return
-      const delta = e.clientX - startX
-      if (Math.abs(delta) > 4) didDrag = true
-      track.scrollLeft = startScrollLeft - delta
-    }
-
-    const endDrag = (e: PointerEvent) => {
-      if (!dragging) return
-      dragging = false
-      track.classList.remove('quick-carousel__track--dragging')
-      if (track.hasPointerCapture(e.pointerId)) {
-        track.releasePointerCapture(e.pointerId)
-      }
-    }
-
-    const onClick = (e: MouseEvent) => {
-      if (!didDrag) return
-      e.preventDefault()
-      e.stopPropagation()
-      didDrag = false
-    }
-
-    track.addEventListener('pointerdown', onPointerDown)
-    track.addEventListener('pointermove', onPointerMove)
-    track.addEventListener('pointerup', endDrag)
-    track.addEventListener('pointercancel', endDrag)
-    track.addEventListener('click', onClick, true)
-
-    return () => {
-      track.removeEventListener('pointerdown', onPointerDown)
-      track.removeEventListener('pointermove', onPointerMove)
-      track.removeEventListener('pointerup', endDrag)
-      track.removeEventListener('pointercancel', endDrag)
-      track.removeEventListener('click', onClick, true)
-    }
-  }, [actions.length])
-
   const scrollToIndex = (index: number) => {
     const slide = slideRefs.current[index]
     slide?.scrollIntoView({ behavior: 'smooth', inline: 'start', block: 'nearest' })
