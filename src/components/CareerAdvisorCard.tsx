@@ -101,6 +101,7 @@ export function CareerAdvisorCard({ language, readAloudEnabled }: CareerAdvisorC
   const [pendingUploadName, setPendingUploadName] = useState<string | null>(null)
   const [documentContext, setDocumentContext] = useState<string | null>(null)
   const [uploading, setUploading] = useState(false)
+  const [voiceInputAvailable, setVoiceInputAvailable] = useState(false)
 
   const ui = useMemo(() => getUiStrings(language), [language])
   const readAloudActive = readAloudEnabled && isReadAloudSupported(language)
@@ -397,6 +398,7 @@ export function CareerAdvisorCard({ language, readAloudEnabled }: CareerAdvisorC
     if (!SpeechRecognitionCtor) {
       recognitionRef.current = null
       setListening(false)
+      setVoiceInputAvailable(false)
       return
     }
 
@@ -422,6 +424,7 @@ export function CareerAdvisorCard({ language, readAloudEnabled }: CareerAdvisorC
     }
 
     recognitionRef.current = recognition
+    setVoiceInputAvailable(true)
 
     return () => {
       try {
@@ -433,6 +436,7 @@ export function CareerAdvisorCard({ language, readAloudEnabled }: CareerAdvisorC
         // ignore
       }
       recognitionRef.current = null
+      setVoiceInputAvailable(false)
     }
   }, [speechLang])
 
@@ -450,12 +454,19 @@ export function CareerAdvisorCard({ language, readAloudEnabled }: CareerAdvisorC
     }
 
     try {
-      setListening(true)
       recognition.lang = speechLang
       recognition.start()
+      setListening(true)
       inputRef.current?.focus()
     } catch {
-      setListening(false)
+      try {
+        recognition.abort()
+        recognition.lang = speechLang
+        recognition.start()
+        setListening(true)
+      } catch {
+        setListening(false)
+      }
     }
   }, [listening, speechLang])
 
@@ -599,6 +610,7 @@ export function CareerAdvisorCard({ language, readAloudEnabled }: CareerAdvisorC
   const canSend = !uploading && (draft.trim().length > 0 || Boolean(pendingAttachment))
 
   return (
+    <>
     <section
       className={ `advisor-card${ chatEmpty ? ' advisor-card--landing' : ' advisor-card--active-chat' }` }
       aria-labelledby={ chatEmpty ? `${ formId }-title` : undefined }
@@ -786,11 +798,11 @@ export function CareerAdvisorCard({ language, readAloudEnabled }: CareerAdvisorC
               />
               <button
                 type="button"
-                className={ `icon-btn icon-btn--infield${ listening ? ' icon-btn--active' : '' }` }
+                className={ `icon-btn icon-btn--infield icon-btn--mic${ listening ? ' icon-btn--active' : '' }` }
                 aria-label={ ui.voiceInputAria }
                 aria-pressed={ listening }
                 onClick={ toggleVoiceInput }
-                disabled={ !recognitionRef.current }
+                disabled={ !voiceInputAvailable }
               >
                 <Mic size={ 22 } strokeWidth={ 2 } />
               </button>
@@ -805,10 +817,11 @@ export function CareerAdvisorCard({ language, readAloudEnabled }: CareerAdvisorC
             </div>
           </div>
         </form>
-        <p className="ai-disclaimer" role="note">
-          { ui.aiDisclaimer }
-        </p>
       </div>
     </section>
+    <p className="ai-disclaimer ai-disclaimer--below-chat" role="note">
+      { ui.aiDisclaimer }
+    </p>
+    </>
   )
 }
