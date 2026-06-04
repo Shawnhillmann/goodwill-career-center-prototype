@@ -1553,6 +1553,13 @@ button {
   padding-bottom: calc(1.5rem + env(safe-area-inset-bottom));
 }
 
+@media (max-width: 1023px) {
+  .app--chat-landing .advisor-card--active-chat {
+    min-height: calc(100dvh - 7.75rem);
+    max-height: none;
+  }
+}
+
 @media (max-width: 600px) {
   .advisor-card--active-chat {
     min-height: calc(100vh - 6rem);
@@ -1561,6 +1568,11 @@ button {
     max-height: calc(100dvh - 4.25rem);
     padding: 1rem 1rem 1.25rem;
     padding-bottom: calc(1.25rem + env(safe-area-inset-bottom));
+  }
+
+  .app--chat-landing .advisor-card--active-chat {
+    min-height: calc(100dvh - 7rem);
+    max-height: none;
   }
 }
 
@@ -1814,28 +1826,30 @@ button {
   }
 
   .advisor-card--landing {
-    flex: 0 1 auto;
-    min-height: auto;
+    flex: 1 1 auto;
+    min-height: calc(100dvh - 7.75rem);
+    min-height: calc(100dvh - 7.75rem);
     display: flex;
     flex-direction: column;
     text-align: center;
-    padding: 1rem 0.85rem 0.75rem;
+    padding: 1.25rem 0.85rem 1rem;
     border-radius: var(--gw-radius-md);
   }
 
   .advisor-card__landing {
-    flex: 0 1 auto;
-    min-height: auto;
+    flex: 1 1 auto;
+    min-height: 0;
     display: flex;
     flex-direction: column;
     gap: 0;
   }
 
   .advisor-card__hero {
-    flex: 0 1 auto;
-    min-height: auto;
+    flex: 1 1 auto;
+    min-height: 0;
     margin-bottom: 0;
-    gap: 0.65rem;
+    gap: 0.75rem;
+    justify-content: flex-start;
   }
 
   .advisor-card__portrait {
@@ -1844,12 +1858,13 @@ button {
   }
 
   .advisor-card__hero-content {
-    flex: 0 1 auto;
-    min-height: auto;
+    flex: 1 1 auto;
+    min-height: 0;
     display: flex;
     flex-direction: column;
     max-width: none;
     gap: 0.5rem;
+    justify-content: flex-start;
   }
 
   .advisor-card__hero-intro {
@@ -1877,8 +1892,9 @@ button {
 
   .advisor-card__quick-carousel {
     display: block;
-    margin-top: 0.5rem;
-    padding-top: 0;
+    flex-shrink: 0;
+    margin-top: auto;
+    padding-top: 0.75rem;
     width: calc(100% + 1.7rem);
     margin-inline: -0.85rem;
     overflow: visible;
@@ -1886,10 +1902,22 @@ button {
 
   .advisor-card--landing .advisor-card__dock {
     flex-shrink: 0;
-    margin-top: 0.35rem;
+    margin-top: 0.5rem;
     padding-top: 0;
   }
+}
 
+@media (max-width: 600px) {
+  .app--chat-landing .advisor-card--landing {
+    min-height: calc(100dvh - 7rem);
+  }
+}
+
+@media (max-width: 480px) {
+  .app--chat-landing .advisor-card--landing {
+    min-height: calc(100dvh - 6.5rem);
+    padding: 1rem 0.85rem 0.85rem;
+  }
 }
 
 @media (min-width: 1024px) {
