@@ -45,6 +45,11 @@ const CONFIG_HEAVY_RE =
 const JOB_SIGNAL_RE =
   /\b(responsibilit|qualificat|requirement|experience|description|apply|salary|benefit|position|role|duties|skills|education|location|full[- ]?time|part[- ]?time)\b/i
 
+const CHROME_BOILERPLATE_RE =
+  /\b(cookie policy|privacy notice|terms of use|sign in|all rights reserved|equal opportunity|accessibility|©\s*\d{4}|navigation|site map|footer)\b/gi
+
+const BOILERPLATE_TAG_RE = /<(header|footer|nav|aside)\b[^>]*>[\s\S]*?<\/\1>/gi
+
 /** True when extracted text looks like JS bundles/config, not a readable page. */
 export function isLowQualityPageText(text: string, title = ''): boolean {
   const sample = text.slice(0, 4000)
@@ -62,6 +67,202 @@ export function isLowQualityPageText(text: string, title = ''): boolean {
   if (/^[\s\w.:-]*\{/.test(sample) && jobHits === 0) return true
 
   return false
+}
+
+/** True when visible text is mostly site chrome (nav, legal, footer) vs primary body. */
+export function isChromeHeavyText(text: string, title = ''): boolean {
+  if (isLowQualityPageText(text, title)) return true
+  const sample = text.slice(0, 6000)
+  const chromeHits = (sample.match(CHROME_BOILERPLATE_RE) ?? []).length
+  const jobHits = (sample.match(JOB_SIGNAL_RE) ?? []).length
+  const afterTitle = title ? sample.slice(sample.toLowerCase().indexOf(title.toLowerCase()) + title.length) : sample
+  const bodyJobHits = (afterTitle.match(JOB_SIGNAL_RE) ?? []).length
+
+  if (jobHits >= 4 && bodyJobHits >= 2) return false
+  if (chromeHits >= 6 && bodyJobHits < 2) return true
+  if (sample.length > 2500 && chromeHits >= 4 && jobHits < 3) return true
+  return false
+}
+
+export function stripBoilerplateHtml(html: string): string {
+  let s = html
+  s = s.replace(BOILERPLATE_TAG_RE, ' ')
+  s = s.replace(/<[^>]+role=["'](?:navigation|banner|contentinfo|complementary)["'][^>]*>[\s\S]*?<\/[^>]+>/gi, ' ')
+  return s
+}
+
+function countHeadings(text: string): number {
+  return (text.match(/\b(description|summary|qualifications|requirements|responsibilities|about the role|job description)\b/gi) ?? [])
+    .length
+}
+
+function countParagraphs(text: string): number {
+  return text.split(/\n{2,}/).filter((p) => p.trim().length >= 60).length
+}
+
+/** Extract text from main/article-like regions before falling back to full-document noise. */
+export function extractMainContentText(html: string): string {
+  const stripped = stripBoilerplateHtml(html)
+  const candidates: string[] = []
+
+  const mainPatterns = [
+    /<main\b[^>]*>([\s\S]*?)<\/main>/i,
+    /<article\b[^>]*>([\s\S]*?)<\/article>/i,
+    /<div[^>]+(?:id|class)=["'][^"']*(?:job[-_]?description|posting[-_]?content|role[-_]?detail|content-main)[^"']*["'][^>]*>([\s\S]*?)<\/div>/i,
+  ]
+
+  for (const pattern of mainPatterns) {
+    const m = stripped.match(pattern)
+    if (m?.[1]) {
+      const t = htmlToPlainText(m[1])
+      if (t.length >= 120) candidates.push(t)
+    }
+  }
+
+  const plain = htmlToPlainText(stripped)
+  if (plain.length >= 120) candidates.push(plain)
+
+  return candidates.sort((a, b) => b.length - a.length)[0] ?? ''
+}
+
+function extractEscapedJsonParseLiteral(html: string, marker: string): unknown | null {
+  const markerIndex = html.indexOf(marker)
+  if (markerIndex < 0) return null
+
+  const parseIndex = html.indexOf('JSON.parse("', markerIndex)
+  if (parseIndex < 0) return null
+
+  let i = parseIndex + 'JSON.parse("'.length
+  let raw = ''
+  while (i < html.length) {
+    const ch = html[i]
+    if (ch === '\\') {
+      raw += ch + (html[i + 1] ?? '')
+      i += 2
+      continue
+    }
+    if (ch === '"') break
+    raw += ch
+    i++
+  }
+
+  if (!raw) return null
+  try {
+    const unescaped = JSON.parse(`"${raw}"`)
+    return typeof unescaped === 'string' ? JSON.parse(unescaped) : unescaped
+  } catch {
+    return null
+  }
+}
+
+function findJobRecords(value: unknown, out: Record<string, unknown>[], depth = 0): void {
+  if (depth > 18 || out.length >= 6) return
+  if (!value || typeof value !== 'object') return
+
+  if (!Array.isArray(value)) {
+    const record = value as Record<string, unknown>
+    const hasTitle =
+      typeof record.postingTitle === 'string' ||
+      typeof record.title === 'string' ||
+      typeof record.name === 'string'
+    const hasBody =
+      typeof record.jobSummary === 'string' ||
+      typeof record.description === 'string' ||
+      typeof record.jobDescription === 'string' ||
+      typeof record.summary === 'string'
+    if (hasTitle && hasBody) out.push(record)
+  }
+
+  const children = Array.isArray(value) ? value : Object.values(value as Record<string, unknown>)
+  for (const child of children) findJobRecords(child, out, depth + 1)
+}
+
+export function formatJobRecord(record: Record<string, unknown>): string {
+  const parts: string[] = []
+
+  const title =
+    (typeof record.postingTitle === 'string' && record.postingTitle) ||
+    (typeof record.title === 'string' && record.title) ||
+    (typeof record.name === 'string' && record.name) ||
+    ''
+  if (title) parts.push(`Title: ${ title }`)
+
+  const summaryFields: Array<[string, string]> = [
+    ['jobSummary', 'Summary'],
+    ['summary', 'Summary'],
+    ['description', 'Description'],
+    ['jobDescription', 'Job description'],
+  ]
+  for (const [key, label] of summaryFields) {
+    const val = record[key]
+    if (typeof val === 'string' && val.length >= 20) {
+      parts.push(`${ label }:\n${ stripHtmlTags(val) }`)
+    }
+  }
+
+  const qualFields: Array<[string, string]> = [
+    ['minimumQualifications', 'Minimum qualifications'],
+    ['preferredQualifications', 'Preferred qualifications'],
+    ['qualifications', 'Qualifications'],
+    ['requirements', 'Requirements'],
+  ]
+  for (const [key, label] of qualFields) {
+    const val = record[key]
+    if (typeof val === 'string' && val.length >= 20) {
+      parts.push(`${ label }:\n${ stripHtmlTags(val) }`)
+    }
+  }
+
+  const locations = record.locations
+  if (Array.isArray(locations) && locations.length) {
+    const names = locations
+      .map((loc) => {
+        if (!loc || typeof loc !== 'object') return ''
+        const o = loc as Record<string, unknown>
+        return [o.city, o.state, o.country, o.name].filter((x) => typeof x === 'string').join(', ')
+      })
+      .filter(Boolean)
+    if (names.length) parts.push(`Location: ${ names.join('; ') }`)
+  }
+
+  if (typeof record.teamNames === 'object' && Array.isArray(record.teamNames) && record.teamNames.length) {
+    parts.push(`Team: ${ record.teamNames.filter((t) => typeof t === 'string').join(', ') }`)
+  }
+
+  return parts.join('\n\n')
+}
+
+function extractHydrationJobText(html: string): string[] {
+  const markers = ['__staticRouterHydrationData', '__remixContext', '__NEXT_DATA__']
+  const texts: string[] = []
+
+  for (const marker of markers) {
+    const data = extractEscapedJsonParseLiteral(html, marker)
+    if (!data) continue
+    const records: Record<string, unknown>[] = []
+    findJobRecords(data, records)
+    for (const record of records) {
+      const formatted = formatJobRecord(record)
+      if (formatted.length >= 80) texts.push(formatted)
+    }
+  }
+
+  const nextScript = html.match(/<script[^>]*id=["']__NEXT_DATA__["'][^>]*>([\s\S]*?)<\/script>/i)
+  if (nextScript?.[1]) {
+    try {
+      const data = JSON.parse(nextScript[1].trim()) as unknown
+      const records: Record<string, unknown>[] = []
+      findJobRecords(data, records)
+      for (const record of records) {
+        const formatted = formatJobRecord(record)
+        if (formatted.length >= 80) texts.push(formatted)
+      }
+    } catch {
+      // ignore
+    }
+  }
+
+  return texts
 }
 
 function truncate(text: string): string {
@@ -230,23 +431,45 @@ export type HtmlExtractResult = {
   source: 'html' | 'structured' | 'meta'
 }
 
+export type ExtractionMetrics = {
+  rawHtmlLength: number
+  plainTextLength: number
+  mainContentLength: number
+  structuredBlockCount: number
+  headingCount: number
+  paragraphCount: number
+  chromeHeavy: boolean
+  lowQuality: boolean
+}
+
 /** Best-effort readable text from raw HTML (SPA-safe). */
 export function extractReadableContentFromHtml(html: string): HtmlExtractResult {
+  const metrics = analyzeExtractionMetrics(html)
   const title = extractHtmlTitle(html)
-  const plain = htmlToPlainText(html)
-  const structured = [...extractJsonLd(html), ...extractScriptJsonBlobs(html)]
-  const meta = extractMetaDescription(html)
 
-  if (!isLowQualityPageText(plain, title)) {
+  const structured = [
+    ...extractHydrationJobText(html),
+    ...extractJsonLd(html),
+    ...extractScriptJsonBlobs(html),
+  ].filter((block, index, arr) => block.length >= 80 && arr.indexOf(block) === index)
+
+  if (structured.length) {
+    const best = structured.sort((a, b) => b.length - a.length)[0]
+    return { title, text: truncate(best), source: 'structured' }
+  }
+
+  const main = extractMainContentText(html)
+  if (main.length >= 200 && !metrics.chromeHeavy) {
+    return { title, text: truncate(main), source: 'html' }
+  }
+
+  const plain = htmlToPlainText(stripBoilerplateHtml(html))
+  if (plain.length >= 200 && !metrics.chromeHeavy && !metrics.lowQuality) {
     return { title, text: truncate(plain), source: 'html' }
   }
 
-  if (structured.length) {
-    const text = truncate(structured.join('\n\n---\n\n'))
-    return { title, text, source: 'structured' }
-  }
-
-  if (meta && !isLowQualityPageText(meta, title)) {
+  const meta = extractMetaDescription(html)
+  if (meta && !isChromeHeavyText(meta, title)) {
     const text = truncate(title ? `${ title }\n\n${ meta }` : meta)
     return { title, text, source: 'meta' }
   }
@@ -256,6 +479,25 @@ export function extractReadableContentFromHtml(html: string): HtmlExtractResult 
   }
 
   return { title, text: '', source: 'html' }
+}
+
+export function analyzeExtractionMetrics(html: string): ExtractionMetrics {
+  const title = extractHtmlTitle(html)
+  const plain = htmlToPlainText(html)
+  const main = extractMainContentText(html)
+  const structuredCount =
+    extractHydrationJobText(html).length + extractJsonLd(html).length + extractScriptJsonBlobs(html).length
+
+  return {
+    rawHtmlLength: html.length,
+    plainTextLength: plain.length,
+    mainContentLength: main.length,
+    structuredBlockCount: structuredCount,
+    headingCount: countHeadings(plain),
+    paragraphCount: countParagraphs(plain),
+    chromeHeavy: isChromeHeavyText(plain, title),
+    lowQuality: isLowQualityPageText(plain, title),
+  }
 }
 
 export function formatSmartRecruitersPosting(data: Record<string, unknown>): string {

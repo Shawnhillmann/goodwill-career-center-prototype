@@ -1,9 +1,12 @@
 import {
+  analyzeExtractionMetrics,
   extractHtmlTitle,
   extractReadableContentFromHtml,
+  isChromeHeavyText,
   isLowQualityPageText,
 } from './pageContentExtract.js'
-import { fetchSmartRecruitersJobText } from './smartRecruitersFetch.js'
+import { fetchKnownJobBoardText } from './jobBoardResolvers.js'
+import { logPageFetchDiagnostics, sampleText } from './pageFetchDiagnostics.js'
 
 const FETCH_TIMEOUT_MS = 12_000
 const MAX_BYTES = 768_000
@@ -44,16 +47,19 @@ export type PageFetchOutcome = {
   error?: string
 }
 
-async function trySupplementalJobText(url: URL, html: string, title: string): Promise<string | null> {
-  const sr = await fetchSmartRecruitersJobText(url)
-  if (sr) return sr.slice(0, MAX_TEXT_CHARS)
+async function trySupplementalJobText(
+  url: URL,
+): Promise<{ text: string; resolver: string } | null> {
+  const board = await fetchKnownJobBoardText(url)
+  if (!board) return null
+  return { text: board.text.slice(0, MAX_TEXT_CHARS), resolver: board.resolver }
+}
 
-  const extracted = extractReadableContentFromHtml(html)
-  if (extracted.text && extracted.source !== 'html' && !isLowQualityPageText(extracted.text, title)) {
-    return extracted.text
-  }
-
-  return null
+function extractionNeedsSupplement(text: string, title: string): boolean {
+  if (!text || text.length < 40) return true
+  if (isLowQualityPageText(text, title)) return true
+  if (isChromeHeavyText(text, title)) return true
+  return false
 }
 
 async function fetchOnce(url: URL, redirectCount: number): Promise<PageFetchOutcome> {
@@ -124,18 +130,42 @@ async function fetchOnce(url: URL, redirectCount: number): Promise<PageFetchOutc
     }
 
     const title = extractHtmlTitle(raw)
+    const metrics = analyzeExtractionMetrics(raw)
     let extracted = extractReadableContentFromHtml(raw)
     let text = extracted.text
+    let supplementalResolver: string | undefined
 
-    if (!text || isLowQualityPageText(text, title)) {
-      const supplemental = await trySupplementalJobText(url, raw, title)
+    if (extractionNeedsSupplement(text ?? '', title)) {
+      const supplemental = await trySupplementalJobText(url)
       if (supplemental) {
-        text = supplemental
+        text = supplemental.text
+        supplementalResolver = supplemental.resolver
         extracted = { title, text, source: 'structured' }
       }
     }
 
-    if (!text || text.length < 40 || isLowQualityPageText(text, title)) {
+    const finalText = (text ?? '').slice(0, MAX_TEXT_CHARS)
+    const failed = extractionNeedsSupplement(finalText, title)
+
+    logPageFetchDiagnostics({
+      url: url.toString(),
+      statusCode: response.status,
+      rawHtmlBytes: Buffer.byteLength(raw, 'utf8'),
+      renderedDomNote: 'not available (HTTP fetch only; no headless browser)',
+      extractionSource: supplementalResolver ? `api:${ supplementalResolver }` : extracted.source,
+      plainTextChars: metrics.plainTextLength,
+      finalTextChars: finalText.length,
+      headingCount: metrics.headingCount,
+      paragraphCount: metrics.paragraphCount,
+      structuredBlockCount: metrics.structuredBlockCount,
+      chromeHeavy: metrics.chromeHeavy,
+      lowQuality: metrics.lowQuality,
+      supplementalResolver,
+      htmlSample: sampleText(raw, 500),
+      finalTextSample: sampleText(finalText, 500),
+    })
+
+    if (failed) {
       return {
         url: url.toString(),
         ok: false,
@@ -150,7 +180,7 @@ async function fetchOnce(url: URL, redirectCount: number): Promise<PageFetchOutc
       ok: true,
       statusCode: response.status,
       title: title || extracted.title,
-      text,
+      text: finalText,
     }
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : String(err)
