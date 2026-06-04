@@ -115,7 +115,7 @@ const uiStrings: Record<SupportedLanguage, UiStrings> = {
     removeAttachment: 'Remove attachment',
     uploadingFile: 'Uploading…',
     aiDisclaimer:
-      'Goodwill career advisor uses AI which can make mistakes. Jobs and other information are not vetted by Goodwill. Do not share private information and double check important information.',
+      'Goodwill career advisor uses AI which can make mistakes. Information & jobs are not vetted. Do not share private information & double check important information.',
     footerTagline: 'Goodwill helps people build skills, find jobs, and grow their careers.',
     footerLearnMore: 'Learn more about Goodwill',
     footerCopyright: '© 2024 Goodwill Industries International, Inc.',
@@ -178,7 +178,7 @@ const uiStrings: Record<SupportedLanguage, UiStrings> = {
     removeAttachment: 'Quitar archivo adjunto',
     uploadingFile: 'Subiendo…',
     aiDisclaimer:
-      'El asesor de carreras de Goodwill usa IA y puede cometer errores. Los empleos y otra información no están verificados por Goodwill. No compartas información privada y verifica la información importante.',
+      'El asesor de carreras de Goodwill usa IA y puede cometer errores. La información y los empleos no están verificados. No compartas información privada y verifica la información importante.',
     footerTagline: 'Goodwill ayuda a las personas a desarrollar habilidades, encontrar trabajo y crecer profesionalmente.',
     footerLearnMore: 'Conoce más sobre Goodwill',
     footerCopyright: '© 2024 Goodwill Industries International, Inc.',
@@ -241,7 +241,7 @@ const uiStrings: Record<SupportedLanguage, UiStrings> = {
     removeAttachment: 'Rimuovi allegato',
     uploadingFile: 'Caricamento…',
     aiDisclaimer:
-      'Il consulente di carriera Goodwill usa l’IA e può commettere errori. Le offerte di lavoro e altre informazioni non sono verificate da Goodwill. Non condividere informazioni private e verifica le informazioni importanti.',
+      'Il consulente di carriera Goodwill usa l’IA e può commettere errori. Informazioni e offerte di lavoro non sono verificate. Non condividere informazioni private e verifica le informazioni importanti.',
     footerTagline: 'Goodwill aiuta le persone a sviluppare competenze, trovare lavoro e crescere professionalmente.',
     footerLearnMore: 'Scopri di più su Goodwill',
     footerCopyright: '© 2024 Goodwill Industries International, Inc.',
@@ -304,7 +304,7 @@ const uiStrings: Record<SupportedLanguage, UiStrings> = {
     removeAttachment: 'Retire fichye a',
     uploadingFile: 'Ap telechaje…',
     aiDisclaimer:
-      'Konseye karyè Goodwill la itilize IA epi li ka fè erè. Travay ak lòt enfòmasyon yo pa verifye pa Goodwill. Pa pataje enfòmasyon prive epi verifye enfòmasyon enpòtan yo.',
+      'Konseye karyè Goodwill la itilize IA epi li ka fè erè. Enfòmasyon ak travay yo pa verifye. Pa pataje enfòmasyon prive epi verifye enfòmasyon enpòtan yo.',
     footerTagline: 'Goodwill ede moun devlope konpetans, jwenn travay, epi grandi nan karyè yo.',
     footerLearnMore: 'Aprann plis sou Goodwill',
     footerCopyright: '© 2024 Goodwill Industries International, Inc.',
@@ -367,7 +367,7 @@ const uiStrings: Record<SupportedLanguage, UiStrings> = {
     removeAttachment: 'Usuń załącznik',
     uploadingFile: 'Przesyłanie…',
     aiDisclaimer:
-      'Doradca kariery Goodwill korzysta z AI, które może popełniać błędy. Oferty pracy i inne informacje nie są weryfikowane przez Goodwill. Nie udostępniaj prywatnych informacji i sprawdzaj ważne informacje.',
+      'Doradca kariery Goodwill korzysta z AI, które może popełniać błędy. Informacje i oferty pracy nie są weryfikowane. Nie udostępniaj prywatnych informacji i sprawdzaj ważne informacje.',
     footerTagline: 'Goodwill pomaga rozwijać umiejętności, znaleźć pracę i rozwijać karierę.',
     footerLearnMore: 'Dowiedz się więcej o Goodwill',
     footerCopyright: '© 2024 Goodwill Industries International, Inc.',
@@ -430,7 +430,7 @@ const uiStrings: Record<SupportedLanguage, UiStrings> = {
     removeAttachment: 'Удалить вложение',
     uploadingFile: 'Загрузка…',
     aiDisclaimer:
-      'Карьерный консультант Goodwill использует ИИ и может ошибаться. Вакансии и другая информация не проверяются Goodwill. Не сообщайте личные данные и перепроверяйте важную информацию.',
+      'Карьерный консультант Goodwill использует ИИ и может ошибаться. Информация и вакансии не проверяются. Не сообщайте личные данные и перепроверяйте важную информацию.',
     footerTagline: 'Goodwill помогает развивать навыки, находить работу и строить карьеру.',
     footerLearnMore: 'Узнать больше о Goodwill',
     footerCopyright: '© 2024 Goodwill Industries International, Inc.',
@@ -493,7 +493,7 @@ const uiStrings: Record<SupportedLanguage, UiStrings> = {
     removeAttachment: 'إزالة المرفق',
     uploadingFile: 'جارٍ الرفع…',
     aiDisclaimer:
-      'يستخدم مستشار Goodwill المهني الذكاء الاصطناعي وقد يخطئ. الوظائف والمعلومات الأخرى غير مُدقَّقة من Goodwill. لا تشارك معلومات خاصة وتحقق من المعلومات المهمة.',
+      'يستخدم مستشار Goodwill المهني الذكاء الاصطناعي وقد يخطئ. المعلومات والوظائف غير مُدقَّقة. لا تشارك معلومات خاصة وتحقق من المعلومات المهمة.',
     footerTagline: 'تساعد Goodwill الناس على بناء المهارات والعثور على وظائف وتطوير مساراتهم المهنية.',
     footerLearnMore: 'اعرف المزيد عن Goodwill',
     footerCopyright: '© 2024 Goodwill Industries International, Inc.',
