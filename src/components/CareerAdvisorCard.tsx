@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import {
@@ -373,14 +373,17 @@ export function CareerAdvisorCard({ language, readAloudEnabled, onChatActiveChan
 
   useMobileChatViewport(!chatEmpty)
 
+  const chatIsLive = awaitingAdvisor || messages.some((m) => m.streaming)
+
   const scrollMessagesToEnd = useCallback((behavior: ScrollBehavior = 'smooth') => {
     const scroller = chatScrollRef.current
     if (!scroller) return
+    const maxScroll = Math.max(0, scroller.scrollHeight - scroller.clientHeight)
     if (behavior === 'auto') {
-      scroller.scrollTop = scroller.scrollHeight
+      scroller.scrollTop = maxScroll
       return
     }
-    scroller.scrollTo({ top: scroller.scrollHeight, behavior })
+    scroller.scrollTo({ top: maxScroll, behavior })
   }, [])
 
   const handleChatScroll = useCallback(() => {
@@ -390,10 +393,35 @@ export function CareerAdvisorCard({ language, readAloudEnabled, onChatActiveChan
     stickToBottomRef.current = distanceFromBottom < 96
   }, [])
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (!stickToBottomRef.current) return
-    scrollMessagesToEnd(messages.length <= 1 ? 'auto' : 'smooth')
-  }, [messages, awaitingAdvisor, scrollMessagesToEnd])
+    const behavior = chatIsLive || messages.length <= 2 ? 'auto' : 'smooth'
+    scrollMessagesToEnd(behavior)
+  }, [messages, awaitingAdvisor, chatIsLive, scrollMessagesToEnd])
+
+  useEffect(() => {
+    if (!chatIsLive || chatEmpty) return
+    const scroller = chatScrollRef.current
+    if (!scroller) return
+
+    const followEnd = () => {
+      if (!stickToBottomRef.current) return
+      scroller.scrollTop = Math.max(0, scroller.scrollHeight - scroller.clientHeight)
+    }
+
+    const mo = new MutationObserver(followEnd)
+    mo.observe(scroller, { childList: true, subtree: true, characterData: true })
+
+    const ro = new ResizeObserver(followEnd)
+    ro.observe(scroller)
+    scroller.querySelectorAll('.msg-row, .thinking-row, .bubble').forEach((el) => ro.observe(el))
+
+    followEnd()
+    return () => {
+      mo.disconnect()
+      ro.disconnect()
+    }
+  }, [chatIsLive, chatEmpty, messages.length])
 
   useEffect(() => {
     if (awaitingAdvisor) {
