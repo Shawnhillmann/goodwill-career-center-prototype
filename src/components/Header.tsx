@@ -178,9 +178,9 @@ export function Header({ page, compactChat = false, onNavigate, language, onLang
             className="site-header__brand"
             onClick={ (e) => {
               e.preventDefault()
-              window.location.reload()
+              navTo('chat')
             } }
-            aria-label="Goodwill AI Career Center — refresh page"
+            aria-label="Goodwill AI Career Center — Career Advisor"
           >
             <GoodwillLogo wordmarkSize={ 20 } logoHeight={ compactChat ? 32 : 36 } hideWordmark={ compactChat } />
           </a>
