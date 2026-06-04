@@ -33,6 +33,40 @@ html {
   font-size: calc(100% * var(--gw-text-scale));
 }
 
+html[data-text-size='small'] {
+  --gw-text-scale: 0.94;
+}
+
+html[data-text-size='normal'] {
+  --gw-text-scale: 1;
+}
+
+html[data-text-size='large'] {
+  --gw-text-scale: 1.03;
+}
+
+html[data-text-size='veryLarge'] {
+  --gw-text-scale: 1.06;
+}
+
+@media (min-width: 1024px) {
+  html[data-text-size='large'] {
+    --gw-text-scale: 1.09;
+  }
+
+  html[data-text-size='veryLarge'] {
+    --gw-text-scale: 1.16;
+  }
+
+  .site-header__text-size-option--large .site-header__text-size-option-a {
+    font-size: 1.1rem;
+  }
+
+  .site-header__text-size-option--veryLarge .site-header__text-size-option-a {
+    font-size: 1.35rem;
+  }
+}
+
 body {
   margin: 0;
   font-family: var(--font);
