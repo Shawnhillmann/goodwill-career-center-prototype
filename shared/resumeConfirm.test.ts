@@ -42,4 +42,20 @@ describe('shouldOutputResumeDocument', () => {
     ]
     expect(shouldOutputResumeDocument(messages, 'confirm', false)).toBe(false)
   })
+
+  it('does not treat search preview CONFIRM as resume generation', () => {
+    const searchPreview = `Based on what you've told me, I'm ready to search.
+
+I will search for:
+• Accounting jobs in Middletown, CT
+• In-person, full-time and part-time
+
+Reply CONFIRM if you'd like me to begin this search.`
+
+    const messages = [
+      { role: 'user' as const, content: 'Find accounting jobs near Middletown CT' },
+      { role: 'assistant' as const, content: searchPreview },
+    ]
+    expect(shouldOutputResumeDocument(messages, 'confirm', false)).toBe(false)
+  })
 })

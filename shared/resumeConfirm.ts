@@ -2,6 +2,9 @@ import {
   isResumeDeliverableRequest,
   type ResumeTaskQuickAction,
 } from './resumeTask.js'
+import { findMostRecentConfirmGate, advisorOfferedResumeConfirmation } from './confirmGate.js'
+
+export { advisorOfferedResumeConfirmation } from './confirmGate.js'
 
 export type ResumeChatTurn = { role: 'user' | 'assistant'; content: string }
 
@@ -28,19 +31,6 @@ export function isResumeGenerationConfirmed(message: string): boolean {
   )
 }
 
-/** Prior advisor message invited confirm-or-edit before generating. */
-export function advisorOfferedResumeConfirmation(assistantText: string): boolean {
-  const s = assistantText.toLowerCase()
-  return (
-    /\b(reply|respond|type|say)\s+[`'"]?confirm/.test(s) ||
-    /\bconfirm\b.*\b(or|and).*\b(change|edit|update|revise|adjust)/.test(s) ||
-    /\blet me know (which|what) details to change\b/.test(s) ||
-    /\b(i'?ll|i will) generate (the |your )?resume\b/.test(s) ||
-    /\bready to generate (the |your )?resume\b/.test(s) ||
-    /\bwhen you'?re ready\b.*\bconfirm\b/.test(s)
-  )
-}
-
 function threadDiscussesResume(messages: ResumeChatTurn[]): boolean {
   return messages.some((m) => /\b(resume|résumé|cv)\b/i.test(m.content))
 }
@@ -57,6 +47,10 @@ export function shouldOutputResumeDocument(
 ): boolean {
   if (quickAction && COACHING_QUICK_ACTIONS.has(quickAction)) return false
   if (!isResumeGenerationConfirmed(lastUser)) return false
+
+  const activeGate = findMostRecentConfirmGate(messages)
+  if (activeGate === 'search') return false
+  if (activeGate === 'resume') return true
 
   const lastAssistant = [...messages].reverse().find((m) => m.role === 'assistant')?.content ?? ''
   if (advisorOfferedResumeConfirmation(lastAssistant)) return true

@@ -45,7 +45,7 @@ function extractOutputText(json: ResponsesCreateResult): string {
   const texts: string[] = []
   for (const item of output) {
     const itemType = (item as { type?: string }).type
-    if (itemType === 'reasoning') continue
+    if (itemType === 'reasoning' || itemType === 'web_search_call') continue
 
     const content = Array.isArray((item as { content?: unknown }).content)
       ? ((item as { content: Array<{ type?: string; text?: string; json?: unknown }> }).content ?? [])
@@ -143,6 +143,8 @@ export async function invokeOpenAiResponsesText(params: {
   messages: ChatMessage[]
   maxOutputTokens?: number
   reasoningEffort?: ReasoningEffort
+  tools?: Array<Record<string, unknown>>
+  toolChoice?: 'auto' | 'required' | 'none'
 }): Promise<ResponsesInvokeResult> {
   const startedAt = Date.now()
   const body: Record<string, unknown> = {
@@ -155,6 +157,13 @@ export async function invokeOpenAiResponsesText(params: {
 
   if (params.reasoningEffort) {
     body.reasoning = { effort: params.reasoningEffort }
+  }
+
+  if (params.tools?.length) {
+    body.tools = params.tools
+  }
+  if (params.toolChoice) {
+    body.tool_choice = params.toolChoice
   }
 
   const response = await openAiResponsesFetch(body, params.apiKey)

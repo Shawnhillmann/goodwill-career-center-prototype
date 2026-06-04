@@ -36,6 +36,8 @@ import { consumeAdvisorChatStream } from '../lib/chatStream'
 import { shouldStreamAdvisorReply } from '../lib/streamingPolicy'
 import { createStreamTextReveal } from '../lib/streamTextReveal'
 import { isResumeOutputRequest } from '../lib/resumeTask'
+import { isSearchConfirmationTurn } from '../../shared/searchConfirm'
+import { chatMarkdownComponents } from '../lib/chatMarkdownComponents'
 import {
   resolveAdvisorMessageMeta,
   shouldRenderResumePreview,
@@ -192,7 +194,8 @@ export function CareerAdvisorCard({
         [...apiMessages].reverse().find((m) => m.role === 'user')?.content?.trim() ?? ''
       const expectResume = Boolean(
         opts?.expectDocument ||
-          isResumeOutputRequest(apiMessages, lastUserContent, Boolean(docText?.trim()), opts?.quickAction),
+          (!isSearchConfirmationTurn(apiMessages, lastUserContent) &&
+            isResumeOutputRequest(apiMessages, lastUserContent, Boolean(docText?.trim()), opts?.quickAction)),
       )
       const useStream = shouldStreamAdvisorReply({
         messages: apiMessages,
@@ -304,6 +307,11 @@ export function CareerAdvisorCard({
             reveal?.flush()
             stopStreamingSound()
             setAwaitingAdvisor(false)
+            const finalText = replyText.trim()
+            if (!finalText) {
+              showStreamError('Sorry — I didn’t get a response. Please try again.')
+              return
+            }
             setMessages((prev) => {
               if (!streamBubbleVisible) {
                 return [
@@ -312,7 +320,7 @@ export function CareerAdvisorCard({
                     {
                       id: streamMessageId,
                       role: 'advisor',
-                      text: replyText,
+                      text: finalText,
                     },
                     meta?.documentType,
                   ),
@@ -320,12 +328,12 @@ export function CareerAdvisorCard({
               }
               return prev.map((m) =>
                 m.id === streamMessageId
-                  ? applyDocMeta({ ...m, text: replyText, streaming: false }, meta?.documentType)
+                  ? applyDocMeta({ ...m, text: finalText, streaming: false }, meta?.documentType)
                   : m,
               )
             })
             playAdvisorMessageSound()
-            speak(replyText)
+            speak(finalText)
           },
           onError: (message) => {
             showStreamError(message)
@@ -360,12 +368,14 @@ export function CareerAdvisorCard({
         ...(attachmentName ? { attachmentName } : {}),
       }
       const apiMessages = toApiMessages(messages, trimmedValue)
-      const expectDocument = isResumeOutputRequest(
-        apiMessages,
-        trimmedValue,
-        Boolean(docText?.trim()),
-        opts?.quickAction,
-      )
+      const expectDocument =
+        !isSearchConfirmationTurn(apiMessages, trimmedValue) &&
+        isResumeOutputRequest(
+          apiMessages,
+          trimmedValue,
+          Boolean(docText?.trim()),
+          opts?.quickAction,
+        )
       stickToBottomRef.current = true
       if (mobileChatLayout) onMobileHeaderCompactChange?.(true)
       setMessages((prev) => [...prev, userMessage])
@@ -982,7 +992,7 @@ export function CareerAdvisorCard({
                     ) : null}
                     {msg.text ? (
                       <div className="bubble__md">
-                        <ReactMarkdown remarkPlugins={ [remarkGfm] }>{ msg.text }</ReactMarkdown>
+                        <ReactMarkdown remarkPlugins={ [remarkGfm] } components={ chatMarkdownComponents }>{ msg.text }</ReactMarkdown>
                       </div>
                     ) : null}
                   </div>
@@ -1003,7 +1013,7 @@ export function CareerAdvisorCard({
                         <ResumePreview text={ msg.text } />
                       ) : (
                         <div className="bubble__md">
-                          <ReactMarkdown remarkPlugins={ [remarkGfm] }>{ msg.text }</ReactMarkdown>
+                          <ReactMarkdown remarkPlugins={ [remarkGfm] } components={ chatMarkdownComponents }>{ msg.text }</ReactMarkdown>
                         </div>
                       )}
                     </div>

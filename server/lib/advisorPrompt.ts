@@ -14,7 +14,7 @@ export function buildSystemPrompt(
     getGoodwillResponseStyle({ linkFetched: opts?.linkFetched }),
     'Use the full conversation history. Follow-up answers (like a city/state after you asked for location) belong to the earlier request — do not treat them as unrelated new topics.',
     webAccessPrompt?.trim() ?? '',
-    'For general career questions, coach first — ask one helpful follow-up when you need basics like type of work or area.',
+    'For general career questions and exploration, coach through natural conversation — at most 2–3 related questions per reply when you need context, woven into prose. Do not front-load long numbered lists of every topic you might ask about.',
     'Do not apply to jobs for the user. Suggest verifying details and talking to a Goodwill coach when things get complex.',
     `Respond in the user's language when possible: ${ language }.`,
   ]

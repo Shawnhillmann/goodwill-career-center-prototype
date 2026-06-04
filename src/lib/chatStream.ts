@@ -65,7 +65,9 @@ async function consumeSseBody(response: Response, handlers: AdvisorChatStreamHan
         full += chunk
         handlers.onDelta(chunk, full)
       } else if (event === 'done' && typeof data?.reply === 'string') {
-        finish(String(data.reply).trim(), parseAdvisorDoneMeta(data))
+        const reply = String(data.reply).trim()
+        if (reply) finish(reply, parseAdvisorDoneMeta(data))
+        else if (full.trim()) finish(full.trim(), parseAdvisorDoneMeta(data))
       } else if (event === 'error') {
         const base =
           typeof data?.message === 'string'

@@ -7,6 +7,20 @@ import { looksLikeUngroundedSearchClaim } from '../lib/hallucinationGuard.js'
 import { augmentMessagesWithFetchedPages } from '../lib/chatMessages.js'
 import { buildWebAccessPrompt, hasSuccessfullyFetchedPage } from '../lib/linkAccessPrompt.js'
 import { buildWebAccessContext, isOpenEndedWebSearchRequest } from '../lib/webAccessPolicy.js'
+import { invokeAdvisorWebSearch } from '../lib/webSearchExecute.js'
+import { isWebSearchEnabled } from '../lib/webSearchPolicy.js'
+import {
+  evaluateSearchWorkflow,
+  isSearchConfirmationTurn,
+  resolveSearchPlan,
+  shouldExecuteWebSearch,
+  advisorOfferedSearchPreview,
+  findSearchPreviewMessage,
+} from '../../shared/searchConfirm.js'
+import {
+  buildSearchPlanMissingReply,
+  buildSearchUnavailableReply,
+} from '../lib/webSearchFallback.js'
 import { invokePlainAdvisorChat } from '../lib/plainChat.js'
 import { invokeOpenAiResponsesText, type ResponsesInvokeResult } from '../lib/openaiResponses.js'
 import { streamOpenAiResponsesText } from '../lib/openaiResponsesStream.js'
@@ -51,6 +65,22 @@ function resultDiagnostics(result: ResponsesInvokeResult | null | undefined) {
   }
 }
 
+function sendAdvisorReply(res: express.Response, reply: string, stream: boolean): void {
+  const text = reply.trim()
+  if (!text) {
+    sendError(res, 502, 'The AI did not return a response. Please try again.')
+    return
+  }
+  if (stream) {
+    initSse(res)
+    writeSse(res, 'delta', { text })
+    writeSse(res, 'done', { reply: text })
+    endSse(res)
+    return
+  }
+  res.json({ reply: text })
+}
+
 export const chatRouter = express.Router()
 
 chatRouter.post('/', async (req, res) => {
@@ -80,9 +110,10 @@ chatRouter.post('/', async (req, res) => {
 
   const lastUser = [...messages].reverse().find((m) => m.role === 'user')?.content ?? ''
   const hasUploadedDocument = Boolean(body.uploadedDocumentText?.trim())
-  const resumeOnly = Boolean(
-    lastUser && isResumeDocumentTask(messages, lastUser, hasUploadedDocument, quickAction),
-  )
+  const searchConfirmationTurn = isSearchConfirmationTurn(messages, lastUser)
+  const resumeDocumentTurn = isResumeDocumentTask(messages, lastUser, hasUploadedDocument, quickAction)
+
+  const resumeOnly = Boolean(lastUser && !searchConfirmationTurn && resumeDocumentTurn)
   const resumePrep = Boolean(
     lastUser && isResumePreparationTurn(messages, lastUser, hasUploadedDocument, quickAction),
   )
@@ -100,8 +131,20 @@ chatRouter.post('/', async (req, res) => {
         : ''
 
   const webAccess = await buildWebAccessContext(lastUser)
+  const searchWorkflow = evaluateSearchWorkflow(messages, lastUser)
+  const previewText = findSearchPreviewMessage(messages)
+  const userConfirmedSearch =
+    searchConfirmationTurn &&
+    previewText !== '' &&
+    advisorOfferedSearchPreview(previewText)
+  const searchPlan = resolveSearchPlan(messages)
+  const webSearchExecute = userConfirmedSearch && isWebSearchEnabled() && shouldExecuteWebSearch(messages, lastUser)
+
   const linkFetched = hasSuccessfullyFetchedPage(webAccess.pages)
-  const webAccessPrompt = buildWebAccessPrompt(webAccess.webFetchEnabled, webAccess.pages)
+  const webAccessPrompt = buildWebAccessPrompt(webAccess.webFetchEnabled, webAccess.pages, {
+    searchPhase: searchWorkflow.phase,
+    searchMessages: messages,
+  })
   const instructions =
     buildSystemPrompt(body.language, body.uploadedDocumentText, webAccessPrompt, { linkFetched }) + systemDocOnly
   const modelMessages = linkFetched ? augmentMessagesWithFetchedPages(messages, webAccess.pages) : messages
@@ -125,6 +168,11 @@ chatRouter.post('/', async (req, res) => {
       .map((p) => p.error)
       .join('; ') || undefined,
     openEndedSearchRequest: isOpenEndedWebSearchRequest(lastUser),
+    searchWorkflowPhase: searchWorkflow.phase,
+    webSearchExecute,
+    userConfirmedSearch,
+    searchPlanBullets: searchPlan?.bullets.length,
+    webSearchEnabled: isWebSearchEnabled(),
   })
 
   const { apiKey } = getOpenAiConfig()
@@ -135,7 +183,39 @@ chatRouter.post('/', async (req, res) => {
   const useStream = shouldStreamAdvisorReply({
     clientWantsStream: Boolean(body.stream),
     docOnly,
+    webSearchExecute,
   })
+
+  if (userConfirmedSearch) {
+    if (!isWebSearchEnabled()) {
+      sendAdvisorReply(res, buildSearchUnavailableReply(searchPlan), Boolean(body.stream))
+      return
+    }
+    if (!searchPlan) {
+      sendAdvisorReply(res, buildSearchPlanMissingReply(), Boolean(body.stream))
+      return
+    }
+    if (webSearchExecute) {
+      try {
+        const searchResult = await invokeAdvisorWebSearch({
+          apiKey,
+          instructions: buildSystemPrompt(body.language, body.uploadedDocumentText, webAccessPrompt, {
+            linkFetched,
+          }),
+          messages,
+          plan: searchPlan,
+          requestId,
+        })
+        sendAdvisorReply(res, searchResult.reply, Boolean(body.stream))
+        return
+      } catch (err: unknown) {
+        const errorMessage = err instanceof Error ? err.message : String(err)
+        logChat('web_search_error', { requestId, error: errorMessage })
+        sendAdvisorReply(res, buildSearchUnavailableReply(searchPlan), Boolean(body.stream))
+        return
+      }
+    }
+  }
 
   if (useStream) {
     initSse(res)

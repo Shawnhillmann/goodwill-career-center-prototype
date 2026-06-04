@@ -41,7 +41,7 @@ const quickActionCopy: Record<SupportedLanguage, Record<QuickActionId, QuickActi
       description: 'Discover roles that may fit you',
       ariaLabel: 'Explore Careers — discover roles that may fit you',
       starter:
-        'I would like help exploring careers that may fit me. Ask me about my interests, strengths, work history, education, and preferences. Suggest careers that might suit me and explain why—through conversation and coaching only unless I ask for a document.',
+        'I would like help exploring careers that may fit me. Ask me about my interests, strengths, work history, education, and preferences—conversationally, a few related questions at a time rather than a big list. Suggest careers that might suit me and explain why—through coaching only unless I ask for a document or to search for jobs.',
     },
     build_resume: {
       label: 'Build My Resume',
