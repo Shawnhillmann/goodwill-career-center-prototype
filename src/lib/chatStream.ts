@@ -1,7 +1,12 @@
 import { parseAdvisorDocumentType } from '../../shared/advisorMessage'
+import {
+  normalizeConversationState,
+  type ConversationState,
+} from '../../shared/conversationState'
 
 export type AdvisorChatDoneMeta = {
   documentType?: 'resume'
+  conversationState?: ConversationState
 }
 
 export type AdvisorChatStreamHandlers = {
@@ -28,7 +33,15 @@ function parseSseBlock(block: string): { event: string; data: Record<string, unk
 
 function parseAdvisorDoneMeta(data: Record<string, unknown> | null): AdvisorChatDoneMeta | undefined {
   const documentType = parseAdvisorDocumentType(data?.documentType)
-  return documentType ? { documentType } : undefined
+  const conversationState =
+    data && 'conversationState' in data
+      ? normalizeConversationState(data.conversationState)
+      : undefined
+  if (!documentType && conversationState === undefined) return undefined
+  return {
+    ...(documentType ? { documentType } : {}),
+    ...(conversationState !== undefined ? { conversationState } : {}),
+  }
 }
 
 async function consumeSseBody(response: Response, handlers: AdvisorChatStreamHandlers): Promise<void> {

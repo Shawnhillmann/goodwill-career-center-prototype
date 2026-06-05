@@ -10,6 +10,10 @@ import type { SearchPlan } from '../../shared/searchConfirm.js'
 import { buildApprovedSearchQuery } from '../../shared/searchConfirm.js'
 import { buildSearchExecutePrompt } from './searchWorkflowPrompt.js'
 import { buildSearchEmptyResultReply } from './webSearchFallback.js'
+import { MAX_WEB_SEARCH_RESULTS } from '../../shared/searchLimits.js'
+
+const SEARCH_FIRST_PASS_MAX_TOKENS = 1000
+const SEARCH_RETRY_MAX_TOKENS = 1400
 
 export type WebSearchChatResult = {
   reply: string
@@ -65,7 +69,7 @@ export async function invokeAdvisorWebSearch(opts: {
     model,
     instructions: searchInstructions,
     messages: searchMessages,
-    maxOutputTokens: 1800,
+    maxOutputTokens: SEARCH_FIRST_PASS_MAX_TOKENS,
     reasoningEffort: 'low',
   })
 
@@ -75,7 +79,7 @@ export async function invokeAdvisorWebSearch(opts: {
       model,
       instructions: searchInstructions,
       messages: searchMessages,
-      maxOutputTokens: 2400,
+      maxOutputTokens: SEARCH_RETRY_MAX_TOKENS,
       reasoningEffort: 'medium',
     })
   }
@@ -101,6 +105,7 @@ export async function invokeAdvisorWebSearch(opts: {
       requestId: opts.requestId,
       model,
       criteriaCount: opts.plan.bullets.length,
+      maxResults: MAX_WEB_SEARCH_RESULTS,
       parsedResponseLength: reply.length,
       outputItemTypes: result.outputItemTypes,
       usedFallback,

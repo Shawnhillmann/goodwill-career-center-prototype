@@ -3,8 +3,8 @@ export const RESUME_PREP_INSTRUCTIONS = `
 RESUME PREPARATION (mandatory for this reply — user has NOT confirmed generation yet):
 - Do NOT output a formatted resume, ALL CAPS section headers (PROFESSIONAL SUMMARY, WORK EXPERIENCE, etc.), or a sample resume document.
 - Coach in normal conversation: ask for missing details, suggest improvements, or summarize what you will include.
-- When you have enough to generate, end with a clear gate: say you will generate the resume with the information discussed, and ask the user to reply "confirm" or tell you which details to change.
-- Example close: "I'll generate your resume with this information. Reply confirm, or let me know which details to change."
+- When you have enough to generate, end with a clear gate: say you will generate the resume with the information discussed, and ask the user to reply CONFIRM RESUME or tell you which details to change.
+- Example close: "I'll generate your resume with this information. Reply CONFIRM RESUME, or let me know which details to change."
 - Never say "here is your resume" or paste resume layout until they confirm.
 `.trim()
 

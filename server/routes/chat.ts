@@ -12,11 +12,14 @@ import { isWebSearchEnabled } from '../lib/webSearchPolicy.js'
 import {
   evaluateSearchWorkflow,
   isSearchConfirmationTurn,
-  resolveSearchPlan,
   shouldExecuteWebSearch,
-  advisorOfferedSearchPreview,
-  findSearchPreviewMessage,
 } from '../../shared/searchConfirm.js'
+import {
+  clearPendingConversationState,
+  nextConversationStateAfterAssistant,
+  normalizeConversationState,
+  type ConversationState,
+} from '../../shared/conversationState.js'
 import {
   buildSearchPlanMissingReply,
   buildSearchUnavailableReply,
@@ -45,6 +48,7 @@ type ChatRequestBody = {
   source?: ChatRequestSource
   quickAction?: string
   stream?: boolean
+  conversationState?: ConversationState
 }
 
 function isNonEmptyString(v: unknown): v is string {
@@ -65,7 +69,12 @@ function resultDiagnostics(result: ResponsesInvokeResult | null | undefined) {
   }
 }
 
-function sendAdvisorReply(res: express.Response, reply: string, stream: boolean): void {
+function sendAdvisorReply(
+  res: express.Response,
+  reply: string,
+  stream: boolean,
+  conversationState: ConversationState,
+): void {
   const text = reply.trim()
   if (!text) {
     sendError(res, 502, 'The AI did not return a response. Please try again.')
@@ -74,11 +83,11 @@ function sendAdvisorReply(res: express.Response, reply: string, stream: boolean)
   if (stream) {
     initSse(res)
     writeSse(res, 'delta', { text })
-    writeSse(res, 'done', { reply: text })
+    writeSse(res, 'done', { reply: text, conversationState })
     endSse(res)
     return
   }
-  res.json({ reply: text })
+  res.json({ reply: text, conversationState })
 }
 
 export const chatRouter = express.Router()
@@ -110,12 +119,14 @@ chatRouter.post('/', async (req, res) => {
 
   const lastUser = [...messages].reverse().find((m) => m.role === 'user')?.content ?? ''
   const hasUploadedDocument = Boolean(body.uploadedDocumentText?.trim())
-  const searchConfirmationTurn = isSearchConfirmationTurn(messages, lastUser)
-  const resumeDocumentTurn = isResumeDocumentTask(messages, lastUser, hasUploadedDocument, quickAction)
+  const conversationState = normalizeConversationState(body.conversationState)
+  const searchConfirmationTurn = isSearchConfirmationTurn(conversationState, lastUser)
+  const resumeDocumentTurn = isResumeDocumentTask(conversationState, lastUser, messages, quickAction)
 
   const resumeOnly = Boolean(lastUser && !searchConfirmationTurn && resumeDocumentTurn)
   const resumePrep = Boolean(
-    lastUser && isResumePreparationTurn(messages, lastUser, hasUploadedDocument, quickAction),
+    lastUser &&
+      isResumePreparationTurn(conversationState, lastUser, hasUploadedDocument, quickAction, messages),
   )
   const coverLetterOnly = Boolean(
     lastUser && isExplicitDocumentRequest(lastUser, hasUploadedDocument) && /\bcover letter\b/i.test(lastUser),
@@ -131,14 +142,11 @@ chatRouter.post('/', async (req, res) => {
         : ''
 
   const webAccess = await buildWebAccessContext(lastUser)
-  const searchWorkflow = evaluateSearchWorkflow(messages, lastUser)
-  const previewText = findSearchPreviewMessage(messages)
-  const userConfirmedSearch =
-    searchConfirmationTurn &&
-    previewText !== '' &&
-    advisorOfferedSearchPreview(previewText)
-  const searchPlan = resolveSearchPlan(messages)
-  const webSearchExecute = userConfirmedSearch && isWebSearchEnabled() && shouldExecuteWebSearch(messages, lastUser)
+  const searchWorkflow = evaluateSearchWorkflow(messages, lastUser, conversationState)
+  const searchPlan = conversationState.pendingSearchPlan ?? searchWorkflow.plan
+  const userConfirmedSearch = searchConfirmationTurn
+  const webSearchExecute =
+    userConfirmedSearch && isWebSearchEnabled() && shouldExecuteWebSearch(conversationState, lastUser)
 
   const linkFetched = hasSuccessfullyFetchedPage(webAccess.pages)
   const webAccessPrompt = buildWebAccessPrompt(webAccess.webFetchEnabled, webAccess.pages, {
@@ -173,6 +181,7 @@ chatRouter.post('/', async (req, res) => {
     userConfirmedSearch,
     searchPlanBullets: searchPlan?.bullets.length,
     webSearchEnabled: isWebSearchEnabled(),
+    pendingAction: conversationState.pendingAction,
   })
 
   const { apiKey } = getOpenAiConfig()
@@ -187,12 +196,13 @@ chatRouter.post('/', async (req, res) => {
   })
 
   if (userConfirmedSearch) {
+    const clearedState = clearPendingConversationState()
     if (!isWebSearchEnabled()) {
-      sendAdvisorReply(res, buildSearchUnavailableReply(searchPlan), Boolean(body.stream))
+      sendAdvisorReply(res, buildSearchUnavailableReply(searchPlan), Boolean(body.stream), clearedState)
       return
     }
     if (!searchPlan) {
-      sendAdvisorReply(res, buildSearchPlanMissingReply(), Boolean(body.stream))
+      sendAdvisorReply(res, buildSearchPlanMissingReply(), Boolean(body.stream), clearedState)
       return
     }
     if (webSearchExecute) {
@@ -206,12 +216,12 @@ chatRouter.post('/', async (req, res) => {
           plan: searchPlan,
           requestId,
         })
-        sendAdvisorReply(res, searchResult.reply, Boolean(body.stream))
+        sendAdvisorReply(res, searchResult.reply, Boolean(body.stream), clearedState)
         return
       } catch (err: unknown) {
         const errorMessage = err instanceof Error ? err.message : String(err)
         logChat('web_search_error', { requestId, error: errorMessage })
-        sendAdvisorReply(res, buildSearchUnavailableReply(searchPlan), Boolean(body.stream))
+        sendAdvisorReply(res, buildSearchUnavailableReply(searchPlan), Boolean(body.stream), clearedState)
         return
       }
     }
@@ -277,8 +287,13 @@ chatRouter.post('/', async (req, res) => {
         streamed: true,
       })
 
+      const responseState = resumeOnly
+        ? clearPendingConversationState()
+        : nextConversationStateAfterAssistant(reply)
+
       writeSse(res, 'done', {
         reply,
+        conversationState: responseState,
         ...(resumeOnly ? { documentType: 'resume' } : {}),
       })
       endSse(res)
@@ -380,8 +395,13 @@ chatRouter.post('/', async (req, res) => {
       lastUserPreview: lastUser.slice(0, 80),
     })
 
+    const responseState = resumeOnly
+      ? clearPendingConversationState()
+      : nextConversationStateAfterAssistant(reply)
+
     return res.json({
       reply,
+      conversationState: responseState,
       ...(resumeOnly ? { documentType: 'resume' } : {}),
     })
   } catch (err: unknown) {

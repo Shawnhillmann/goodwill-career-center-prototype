@@ -1,8 +1,13 @@
 import { describe, expect, it } from 'vitest'
 
+import {
+  clearPendingConversationState,
+  nextConversationStateAfterAssistant,
+  RESUME_CONFIRM_PHRASE,
+} from './conversationState'
 import { shouldOutputResumeDocument } from './resumeConfirm'
 
-const resumeOffer = 'Reply **confirm** to generate your resume, or tell me what to change.'
+const resumeOffer = 'Reply CONFIRM RESUME to generate your resume, or tell me what to change.'
 
 const sampleResume = `JANE DOE
 AI Developer
@@ -16,46 +21,39 @@ Goodwill — AI Developer | 2022–Present
 • Built chat tools.`
 
 describe('shouldOutputResumeDocument', () => {
-  it('outputs a resume after the advisor offers confirmation', () => {
-    const messages = [
-      { role: 'user' as const, content: 'Help me build my resume' },
-      { role: 'assistant' as const, content: resumeOffer },
-    ]
-    expect(shouldOutputResumeDocument(messages, 'confirm', false)).toBe(true)
+  it('outputs a resume after structured pending state is set', () => {
+    const state = nextConversationStateAfterAssistant(resumeOffer)
+    expect(shouldOutputResumeDocument(state, RESUME_CONFIRM_PHRASE, [])).toBe(true)
   })
 
-  it('outputs a second resume after the prior assistant message is the resume itself', () => {
+  it('outputs a revised resume after a new resume confirm gate', () => {
     const messages = [
       { role: 'user' as const, content: 'Help me build my resume' },
       { role: 'assistant' as const, content: resumeOffer },
-      { role: 'user' as const, content: 'confirm' },
+      { role: 'user' as const, content: RESUME_CONFIRM_PHRASE },
       { role: 'assistant' as const, content: sampleResume },
-      { role: 'user' as const, content: 'Add Python to skills and confirm' },
+      { role: 'user' as const, content: 'Add Python to skills' },
+      {
+        role: 'assistant' as const,
+        content: 'I will add Python to your skills. Reply CONFIRM RESUME to regenerate.',
+      },
     ]
-    expect(shouldOutputResumeDocument(messages, 'confirm', false)).toBe(true)
+    const state = nextConversationStateAfterAssistant(messages.at(-1)!.content)
+    expect(shouldOutputResumeDocument(state, RESUME_CONFIRM_PHRASE, messages)).toBe(true)
   })
 
   it('does not output a resume for unrelated confirmed coaching', () => {
-    const messages = [
-      { role: 'user' as const, content: 'Help me practice interviews' },
-      { role: 'assistant' as const, content: 'What role are you pursuing?' },
-    ]
-    expect(shouldOutputResumeDocument(messages, 'confirm', false)).toBe(false)
+    expect(shouldOutputResumeDocument(clearPendingConversationState(), 'confirm', [])).toBe(false)
   })
 
-  it('does not treat search preview CONFIRM as resume generation', () => {
+  it('does not treat search pending state as resume generation', () => {
     const searchPreview = `Based on what you've told me, I'm ready to search.
 
 I will search for:
 • Accounting jobs in Middletown, CT
-• In-person, full-time and part-time
 
-Reply CONFIRM if you'd like me to begin this search.`
-
-    const messages = [
-      { role: 'user' as const, content: 'Find accounting jobs near Middletown CT' },
-      { role: 'assistant' as const, content: searchPreview },
-    ]
-    expect(shouldOutputResumeDocument(messages, 'confirm', false)).toBe(false)
+Reply CONFIRM SEARCH if you'd like me to begin this search.`
+    const state = nextConversationStateAfterAssistant(searchPreview)
+    expect(shouldOutputResumeDocument(state, 'confirm', [])).toBe(false)
   })
 })

@@ -2364,6 +2364,18 @@ button {
   outline-offset: 3px;
 }
 
+.pending-confirm-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin: 0.35rem 0 0.75rem 2.75rem;
+}
+
+.pending-confirm-actions__btn {
+  min-height: 2.5rem;
+  padding-inline: 1rem;
+}
+
 /* Quick-action carousel (narrow viewports) */
 .quick-carousel {
   width: 100%;

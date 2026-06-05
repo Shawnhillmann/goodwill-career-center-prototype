@@ -10,7 +10,7 @@ export function advisorOfferedSearchPreview(assistantText: string): boolean {
     /\bsearch for:\s*\n/i.test(assistantText) ||
     /\bsearch for:\s*•/i.test(assistantText)
   const hasConfirmGate =
-    /\b(reply|respond|type|say)\b[\s*"'`]*confirm\b/.test(s) ||
+    /\b(reply|respond|type|say)\b[\s*"'`]*confirm(\s+search)?\b/.test(s) ||
     /\bconfirm\b.*\b(begin|start|search)/.test(s) ||
     /\bto begin (this |the )?search\b/.test(s) ||
     /\bwould like me to begin this search\b/.test(s)
@@ -28,7 +28,7 @@ export function advisorOfferedResumeConfirmation(assistantText: string): boolean
     (/\bready to generate\b/.test(s) && /\bresume\b/.test(s))
 
   const hasConfirmGate =
-    (/\b(reply|respond|type|say)\b[\s*"'`]*confirm\b/.test(s) && hasResumeContext) ||
+    (/\b(reply|respond|type|say)\b[\s*"'`]*confirm(\s+resume)?\b/.test(s) && hasResumeContext) ||
     /\bconfirm\b.*\b(or|and).*\b(change|edit|update|revise|adjust)/.test(s) ||
     /\blet me know (which|what) details to change\b/.test(s) ||
     /\b(i'?ll|i will) generate (the |your )?resume\b/.test(s) ||

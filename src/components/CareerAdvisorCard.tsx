@@ -37,6 +37,12 @@ import { shouldStreamAdvisorReply } from '../lib/streamingPolicy'
 import { createStreamTextReveal } from '../lib/streamTextReveal'
 import { isResumeOutputRequest } from '../lib/resumeTask'
 import { isSearchConfirmationTurn } from '../../shared/searchConfirm'
+import {
+  EMPTY_CONVERSATION_STATE,
+  RESUME_CONFIRM_PHRASE,
+  SEARCH_CONFIRM_PHRASE,
+  type ConversationState,
+} from '../../shared/conversationState'
 import { chatMarkdownComponents } from '../lib/chatMarkdownComponents'
 import {
   resolveAdvisorMessageMeta,
@@ -117,6 +123,7 @@ export function CareerAdvisorCard({
   const [pendingAttachment, setPendingAttachment] = useState<{ name: string; text: string } | null>(null)
   const [pendingUploadName, setPendingUploadName] = useState<string | null>(null)
   const [documentContext, setDocumentContext] = useState<string | null>(null)
+  const [conversationState, setConversationState] = useState<ConversationState>(EMPTY_CONVERSATION_STATE)
   const [uploading, setUploading] = useState(false)
   const [voiceInputAvailable, setVoiceInputAvailable] = useState(false)
   const mobileChatLayout = useMediaQuery('(max-width: 1023px)')
@@ -194,15 +201,20 @@ export function CareerAdvisorCard({
         [...apiMessages].reverse().find((m) => m.role === 'user')?.content?.trim() ?? ''
       const expectResume = Boolean(
         opts?.expectDocument ||
-          (!isSearchConfirmationTurn(apiMessages, lastUserContent) &&
-            isResumeOutputRequest(apiMessages, lastUserContent, Boolean(docText?.trim()), opts?.quickAction)),
+          (!isSearchConfirmationTurn(conversationState, lastUserContent) &&
+            isResumeOutputRequest(
+              conversationState,
+              lastUserContent,
+              apiMessages,
+              opts?.quickAction,
+            )),
       )
       const useStream = shouldStreamAdvisorReply({
         messages: apiMessages,
         userMessage: lastUserContent,
         expectDocument: expectResume,
+        conversationState,
         quickAction,
-        hasUploadedDocument: Boolean(docText?.trim()),
       })
       const streamMessageId = nextId()
       let streamBubbleVisible = false
@@ -272,6 +284,7 @@ export function CareerAdvisorCard({
             language,
             source,
             stream: useStream,
+            conversationState,
             ...(quickAction ? { quickAction } : {}),
             ...(docText ? { uploadedDocumentText: docText } : {}),
           }),
@@ -312,6 +325,9 @@ export function CareerAdvisorCard({
               showStreamError('Sorry — I didn’t get a response. Please try again.')
               return
             }
+            if (meta?.conversationState) {
+              setConversationState(meta.conversationState)
+            }
             setMessages((prev) => {
               if (!streamBubbleVisible) {
                 return [
@@ -343,7 +359,7 @@ export function CareerAdvisorCard({
         showStreamError(e?.message || 'Sorry — I’m having trouble responding right now. Please try again.')
       }
     },
-    [language, speak],
+    [conversationState, language, speak],
   )
 
   const sendUserMessage = useCallback(
@@ -369,13 +385,8 @@ export function CareerAdvisorCard({
       }
       const apiMessages = toApiMessages(messages, trimmedValue)
       const expectDocument =
-        !isSearchConfirmationTurn(apiMessages, trimmedValue) &&
-        isResumeOutputRequest(
-          apiMessages,
-          trimmedValue,
-          Boolean(docText?.trim()),
-          opts?.quickAction,
-        )
+        !isSearchConfirmationTurn(conversationState, trimmedValue) &&
+        isResumeOutputRequest(conversationState, trimmedValue, apiMessages, opts?.quickAction)
       stickToBottomRef.current = true
       if (mobileChatLayout) onMobileHeaderCompactChange?.(true)
       setMessages((prev) => [...prev, userMessage])
@@ -383,7 +394,7 @@ export function CareerAdvisorCard({
       setAwaitingAdvisor(true)
       queueAdvisorReply(apiMessages, { expectDocument, uploadedDocumentText: docText, source, quickAction: opts?.quickAction })
     },
-    [documentContext, messages, mobileChatLayout, onMobileHeaderCompactChange, queueAdvisorReply, toApiMessages],
+    [conversationState, documentContext, messages, mobileChatLayout, onMobileHeaderCompactChange, queueAdvisorReply, toApiMessages],
   )
 
   const chatEmpty = messages.length === 0
@@ -793,6 +804,14 @@ export function CareerAdvisorCard({
 
   const composerHasAttachment = Boolean(pendingUploadName || pendingAttachment)
   const canSend = !uploading && (draft.trim().length > 0 || Boolean(pendingAttachment))
+  const showPendingSearchConfirm =
+    !awaitingAdvisor && conversationState.pendingAction === 'search' && Boolean(conversationState.pendingSearchPlan)
+  const showPendingResumeConfirm =
+    !awaitingAdvisor && conversationState.pendingAction === 'resume'
+
+  const handlePendingConfirm = (phrase: string) => {
+    sendUserMessage(phrase)
+  }
 
   useLayoutEffect(() => {
     if (!mobileChatLayout || chatEmpty) {
@@ -1030,6 +1049,28 @@ export function CareerAdvisorCard({
                 </div>
               ),
             )}
+            {showPendingSearchConfirm || showPendingResumeConfirm ? (
+              <div className="pending-confirm-actions" role="group" aria-label={ ui.quickActionsAria }>
+                {showPendingSearchConfirm ? (
+                  <button
+                    type="button"
+                    className="quick-pill pending-confirm-actions__btn"
+                    onClick={ () => handlePendingConfirm(SEARCH_CONFIRM_PHRASE) }
+                  >
+                    { ui.confirmSearchAction }
+                  </button>
+                ) : null}
+                {showPendingResumeConfirm ? (
+                  <button
+                    type="button"
+                    className="quick-pill pending-confirm-actions__btn"
+                    onClick={ () => handlePendingConfirm(RESUME_CONFIRM_PHRASE) }
+                  >
+                    { ui.confirmResumeAction }
+                  </button>
+                ) : null}
+              </div>
+            ) : null}
             {awaitingAdvisor ? (
               <ThinkingIndicator label={ ui.advisorThinkingAria } text={ ui.advisorThinkingLabel } />
             ) : null}

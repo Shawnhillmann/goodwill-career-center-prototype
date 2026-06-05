@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest'
 import {
+  nextConversationStateAfterAssistant,
+  SEARCH_CONFIRM_PHRASE,
+} from './conversationState'
+import {
   advisorOfferedSearchPreview,
   evaluateSearchWorkflow,
   extractSearchPlan,
@@ -17,7 +21,7 @@ I will search for:
 • Within 15 miles of Middletown, CT
 • Entry-level opportunities
 
-Reply CONFIRM to begin the search.`
+Reply CONFIRM SEARCH to begin the search.`
 
 describe('searchConfirm', () => {
   it('detects vague job search intent', () => {
@@ -25,6 +29,13 @@ describe('searchConfirm', () => {
     expect(isSearchIntentRequest('Find jobs near me')).toBe(true)
     expect(isSearchIntentRequest('What is a cover letter?')).toBe(false)
     expect(isSearchIntentRequest('Review https://example.com/jobs/1')).toBe(false)
+  })
+
+  it('detects non-job live lookup intent', () => {
+    expect(isSearchIntentRequest('Find job fairs near Hartford CT')).toBe(true)
+    expect(isSearchIntentRequest('Search for tech companies in Boston')).toBe(true)
+    expect(isSearchIntentRequest('Look up OSHA safety certification requirements')).toBe(true)
+    expect(isSearchIntentRequest('How do I write a cover letter')).toBe(false)
   })
 
   it('accepts explicit search confirmations', () => {
@@ -59,10 +70,11 @@ describe('searchConfirm', () => {
     const messages = [
       { role: 'user', content: 'Find retail jobs in Middletown CT' },
       { role: 'assistant', content: previewMessage },
-      { role: 'user', content: 'Confirm' },
+      { role: 'user', content: SEARCH_CONFIRM_PHRASE },
     ] as const
-    expect(shouldExecuteWebSearch([...messages], 'Confirm')).toBe(true)
-    expect(evaluateSearchWorkflow([...messages], 'Confirm').phase).toBe('execute')
+    const state = nextConversationStateAfterAssistant(previewMessage)
+    expect(shouldExecuteWebSearch(state, SEARCH_CONFIRM_PHRASE)).toBe(true)
+    expect(evaluateSearchWorkflow([...messages], SEARCH_CONFIRM_PHRASE, state).phase).toBe('execute')
   })
 
   it('parses accounting search preview from confirm-first workflow', () => {
@@ -72,19 +84,15 @@ describe('searchConfirm', () => {
 • Within 15 miles of Middletown, CT
 • Full-time and part-time opportunities
 
-Reply CONFIRM if you would like me to begin this search.`
+Reply CONFIRM SEARCH if you would like me to begin this search.`
 
     expect(advisorOfferedSearchPreview(accountingPreview)).toBe(true)
     const plan = extractSearchPlan(accountingPreview)
     expect(plan?.bullets.length).toBeGreaterThanOrEqual(4)
     expect(plan?.bullets.some((b) => /accounting/i.test(b))).toBe(true)
 
-    const messages = [
-      { role: 'user', content: 'Find accounting jobs in Middletown CT' },
-      { role: 'assistant', content: accountingPreview },
-      { role: 'user', content: 'confirm' },
-    ] as const
-    expect(shouldExecuteWebSearch([...messages], 'confirm')).toBe(true)
+    const state = nextConversationStateAfterAssistant(accountingPreview)
+    expect(shouldExecuteWebSearch(state, SEARCH_CONFIRM_PHRASE)).toBe(true)
   })
 
   it('adds 30-day recency rules to approved job search queries', () => {
@@ -99,5 +107,6 @@ Reply CONFIRM if you would like me to begin this search.`
     expect(query).toMatch(/RECENCY \(mandatory/i)
     expect(query).toMatch(/Exclude expired/i)
     expect(query).toMatch(/May 5, 2026/)
+    expect(query).toMatch(/at most 3/i)
   })
 })

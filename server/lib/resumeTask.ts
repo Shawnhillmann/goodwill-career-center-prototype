@@ -18,10 +18,10 @@ export {
 } from '../../shared/resumeConfirm.js'
 
 export function isResumeDocumentTask(
-  messages: ResumeChatTurn[],
+  state: Parameters<typeof shouldOutputResumeDocument>[0],
   lastUser: string,
-  hasUploadedDocument: boolean,
+  messages: ResumeChatTurn[],
   quickAction?: ResumeTaskQuickAction,
 ): boolean {
-  return shouldOutputResumeDocument(messages, lastUser, hasUploadedDocument, quickAction)
+  return shouldOutputResumeDocument(state, lastUser, messages, quickAction)
 }

@@ -49,6 +49,8 @@ type UiStrings = {
   advisorThinkingAria: string
   advisorThinkingLabel: string
   placeholder: string
+  confirmSearchAction: string
+  confirmResumeAction: string
   addFile: string
   removeAttachment: string
   uploadingFile: string
@@ -111,6 +113,8 @@ const uiStrings: Record<SupportedLanguage, UiStrings> = {
     advisorThinkingAria: 'Advisor is thinking',
     advisorThinkingLabel: 'Thinking',
     placeholder: 'Type or talk here…',
+    confirmSearchAction: 'Confirm search',
+    confirmResumeAction: 'Generate resume',
     addFile: 'Add file',
     removeAttachment: 'Remove attachment',
     uploadingFile: 'Uploading…',
@@ -174,6 +178,8 @@ const uiStrings: Record<SupportedLanguage, UiStrings> = {
     advisorThinkingAria: 'El asesor está pensando',
     advisorThinkingLabel: 'Pensando',
     placeholder: 'Escribe o habla aquí…',
+    confirmSearchAction: 'Confirmar búsqueda',
+    confirmResumeAction: 'Generar currículum',
     addFile: 'Agregar archivo',
     removeAttachment: 'Quitar archivo adjunto',
     uploadingFile: 'Subiendo…',
@@ -237,6 +243,8 @@ const uiStrings: Record<SupportedLanguage, UiStrings> = {
     advisorThinkingAria: 'Il consulente sta pensando',
     advisorThinkingLabel: 'Sto pensando',
     placeholder: 'Scrivi o parla qui…',
+    confirmSearchAction: 'Conferma ricerca',
+    confirmResumeAction: 'Genera curriculum',
     addFile: 'Aggiungi file',
     removeAttachment: 'Rimuovi allegato',
     uploadingFile: 'Caricamento…',
@@ -300,6 +308,8 @@ const uiStrings: Record<SupportedLanguage, UiStrings> = {
     advisorThinkingAria: 'Konseye a ap reflechi',
     advisorThinkingLabel: 'Ap reflechi',
     placeholder: 'Tape oswa pale isit la…',
+    confirmSearchAction: 'Konfime rechèch la',
+    confirmResumeAction: 'Kreye rezime a',
     addFile: 'Ajoute fichye',
     removeAttachment: 'Retire fichye a',
     uploadingFile: 'Ap telechaje…',
@@ -363,6 +373,8 @@ const uiStrings: Record<SupportedLanguage, UiStrings> = {
     advisorThinkingAria: 'Doradca myśli',
     advisorThinkingLabel: 'Myślę',
     placeholder: 'Pisz lub mów tutaj…',
+    confirmSearchAction: 'Potwierdź wyszukiwanie',
+    confirmResumeAction: 'Wygeneruj CV',
     addFile: 'Dodaj plik',
     removeAttachment: 'Usuń załącznik',
     uploadingFile: 'Przesyłanie…',
@@ -426,6 +438,8 @@ const uiStrings: Record<SupportedLanguage, UiStrings> = {
     advisorThinkingAria: 'Консультант думает',
     advisorThinkingLabel: 'Думаю',
     placeholder: 'Пишите или говорите здесь…',
+    confirmSearchAction: 'Подтвердить поиск',
+    confirmResumeAction: 'Создать резюме',
     addFile: 'Добавить файл',
     removeAttachment: 'Удалить вложение',
     uploadingFile: 'Загрузка…',
@@ -489,6 +503,8 @@ const uiStrings: Record<SupportedLanguage, UiStrings> = {
     advisorThinkingAria: 'المستشار يفكر',
     advisorThinkingLabel: 'أفكر',
     placeholder: 'اكتب أو تحدث هنا…',
+    confirmSearchAction: 'تأكيد البحث',
+    confirmResumeAction: 'إنشاء السيرة الذاتية',
     addFile: 'إضافة ملف',
     removeAttachment: 'إزالة المرفق',
     uploadingFile: 'جارٍ الرفع…',

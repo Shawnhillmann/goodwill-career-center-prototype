@@ -1,12 +1,15 @@
+import { findActiveSearchPreviewMessage, advisorOfferedSearchPreview } from './confirmGate.js'
 import {
-  findMostRecentConfirmGate,
-  findActiveSearchPreviewMessage,
-  advisorOfferedSearchPreview,
-} from './confirmGate.js'
+  type ConversationState,
+  EMPTY_CONVERSATION_STATE,
+  isSearchActionConfirmed,
+  normalizeConversationState,
+} from './conversationState.js'
 import {
   buildListingRecencyInstructions,
   isListingSearchPlan,
 } from './searchRecency.js'
+import { buildSearchResultLimitInstructions } from './searchLimits.js'
 
 export { advisorOfferedSearchPreview } from './confirmGate.js'
 
@@ -25,19 +28,47 @@ export type SearchWorkflowState = {
   searchIntent: boolean
 }
 
-/** User wants the advisor to find jobs, programs, or resources via search. */
-export function isSearchIntentRequest(text: string): boolean {
+function isCoachingNotLiveSearch(text: string): boolean {
   const s = text.toLowerCase()
-  if (/\bhttps?:\/\//.test(text)) return false
   return (
-    /\b(find|search|look up|look for|browse)\b.{0,40}\b(jobs?|openings?|listings?|positions?|work)\b/.test(s) ||
-    /\b(find|search|look for)\b.{0,40}\b(local resources?|training programs?|programs?|classes?|certification)\b/.test(s) ||
-    /\b(jobs? near me|near me)\b/.test(s) ||
-    /\b(remote work|remote jobs?|hybrid jobs?)\b/.test(s) ||
-    /\bwhat companies are hiring\b/.test(s) ||
-    /\bhelp me find\b.{0,30}\b(jobs?|work|training|programs?)\b/.test(s) ||
-    /\bentry[- ]level\b.{0,20}\b(jobs?|positions?)\b/.test(s)
+    /\b(what is|what are|how do i|how can i|how should i|tips for|help me (write|improve|practice|prepare|word))\b/.test(
+      s,
+    ) ||
+    /\b(find (the right |better )?words|find a way to say)\b/.test(s) ||
+    /\b(interview (question|answer|tip|prep)|cover letter|resume tip)\b/.test(s)
   )
+}
+
+/** User wants a live web lookup (jobs, companies, events, training, or any other topic). */
+export function isSearchIntentRequest(text: string): boolean {
+  const s = text.toLowerCase().trim()
+  if (!s || /\bhttps?:\/\//.test(text)) return false
+  if (isCoachingNotLiveSearch(s)) return false
+
+  if (/\b(search the web|search online|web search|look (it |that |this )?up online)\b/.test(s)) {
+    return true
+  }
+
+  const hasSearchVerb = /\b(find|search|look up|look for|browse for)\b/.test(s)
+  if (!hasSearchVerb) return false
+
+  if (
+    /\b(jobs?|openings?|listings?|positions?|work)\b/.test(s) ||
+    /\b(job fairs?|hiring events?|career fairs?)\b/.test(s) ||
+    /\b(compan(?:y|ies)|employers?|businesses|organizations?)\b/.test(s) ||
+    /\b(people|person|recruiters?|hiring managers?|staffing agencies?)\b/.test(s) ||
+    /\b(local resources?|training programs?|programs?|classes?|certification|certifications)\b/.test(s) ||
+    /\b(jobs? near me|near me|remote work|remote jobs?|hybrid jobs?)\b/.test(s) ||
+    /\bwhat companies are hiring\b/.test(s) ||
+    /\bhelp me find\b/.test(s) ||
+    /\bentry[- ]level\b/.test(s) ||
+    /\b(salary|pay range|wage)s?\b/.test(s)
+  ) {
+    return true
+  }
+
+  // Generic open-ended lookup, e.g. "look up OSHA requirements" or "search for welding schools"
+  return /\b(find|search|look up|look for|browse for)\s+\S/.test(s)
 }
 
 /** Explicit approval after seeing a search preview. */
@@ -120,14 +151,23 @@ export function threadHasSearchIntent(messages: SearchChatTurn[]): boolean {
   return messages.some((m) => m.role === 'user' && isSearchIntentRequest(m.content))
 }
 
-export function shouldExecuteWebSearch(messages: SearchChatTurn[], lastUser: string): boolean {
-  if (!isWebSearchConfirmed(lastUser)) return false
-  const plan = resolveSearchPlan(messages)
-  return plan !== null && plan.bullets.length >= 1
+export function shouldExecuteWebSearch(
+  state: ConversationState,
+  lastUser: string,
+): boolean {
+  return isSearchActionConfirmed(lastUser, state)
 }
 
-export function getSearchWorkflowPhase(messages: SearchChatTurn[], lastUser: string): SearchWorkflowPhase {
-  if (shouldExecuteWebSearch(messages, lastUser)) return 'execute'
+export function getSearchWorkflowPhase(
+  messages: SearchChatTurn[],
+  lastUser: string,
+  state: ConversationState = EMPTY_CONVERSATION_STATE,
+): SearchWorkflowPhase {
+  if (shouldExecuteWebSearch(state, lastUser)) return 'execute'
+
+  if (state.pendingAction === 'search' && state.pendingSearchPlan) {
+    return 'awaiting_confirm'
+  }
 
   const lastAssistant = lastAssistantMessage(messages)
 
@@ -140,12 +180,25 @@ export function getSearchWorkflowPhase(messages: SearchChatTurn[], lastUser: str
   return 'none'
 }
 
-export function evaluateSearchWorkflow(messages: SearchChatTurn[], lastUser: string): SearchWorkflowState {
-  const previewText = findSearchPreviewMessage(messages)
-  const plan = previewText ? extractSearchPlan(previewText) : null
-  let phase = getSearchWorkflowPhase(messages, lastUser)
+export function evaluateSearchWorkflow(
+  messages: SearchChatTurn[],
+  lastUser: string,
+  state: ConversationState = EMPTY_CONVERSATION_STATE,
+): SearchWorkflowState {
+  const structuredPlan =
+    state.pendingAction === 'search' ? (state.pendingSearchPlan ?? null) : null
+  const previewText = structuredPlan ? structuredPlan.rawPreview : findSearchPreviewMessage(messages)
+  const plan = structuredPlan ?? (previewText ? extractSearchPlan(previewText) : null)
+  let phase = getSearchWorkflowPhase(messages, lastUser, state)
 
   if (
+    phase !== 'execute' &&
+    plan &&
+    state.pendingAction === 'search' &&
+    !isSearchActionConfirmed(lastUser, state)
+  ) {
+    phase = 'awaiting_confirm'
+  } else if (
     phase !== 'execute' &&
     plan &&
     previewText &&
@@ -170,6 +223,8 @@ export function buildApprovedSearchQuery(plan: SearchPlan, referenceDate = new D
     '',
     'Find current, relevant results. Summarize what you find with source links when available.',
     'Do not invent employers, programs, salaries, or URLs.',
+    '',
+    buildSearchResultLimitInstructions(),
   ]
 
   if (isListingSearchPlan(plan)) {
@@ -179,10 +234,10 @@ export function buildApprovedSearchQuery(plan: SearchPlan, referenceDate = new D
   return lines.join('\n')
 }
 
-/** True when the user's message confirms a pending search preview (not resume generation). */
-export function isSearchConfirmationTurn(messages: SearchChatTurn[], lastUser: string): boolean {
-  if (!isWebSearchConfirmed(lastUser)) return false
-  if (findMostRecentConfirmGate(messages) !== 'search') return false
-  const preview = findActiveSearchPreviewMessage(messages)
-  return preview !== '' && advisorOfferedSearchPreview(preview)
+/** True when the user confirms a structured pending search action. */
+export function isSearchConfirmationTurn(
+  state: ConversationState | unknown,
+  lastUser: string,
+): boolean {
+  return isSearchActionConfirmed(lastUser, normalizeConversationState(state))
 }

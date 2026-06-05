@@ -2,7 +2,11 @@ import {
   isResumeDeliverableRequest,
   type ResumeTaskQuickAction,
 } from './resumeTask.js'
-import { findMostRecentConfirmGate, advisorOfferedResumeConfirmation } from './confirmGate.js'
+import {
+  type ConversationState,
+  isResumeActionConfirmed,
+  normalizeConversationState,
+} from './conversationState.js'
 
 export { advisorOfferedResumeConfirmation } from './confirmGate.js'
 
@@ -31,44 +35,29 @@ export function isResumeGenerationConfirmed(message: string): boolean {
   )
 }
 
-function threadDiscussesResume(messages: ResumeChatTurn[]): boolean {
-  return messages.some((m) => /\b(resume|résumé|cv)\b/i.test(m.content))
-}
-
 /**
- * True only when the user confirmed after the advisor offered to generate,
- * or confirmed during an active resume-build thread.
+ * True only when structured pending state (or a resume revision after resume output)
+ * matches an explicit resume confirmation.
  */
 export function shouldOutputResumeDocument(
-  messages: ResumeChatTurn[],
+  state: ConversationState | unknown,
   lastUser: string,
-  _hasUploadedDocument: boolean,
+  messages: ResumeChatTurn[],
   quickAction?: ResumeTaskQuickAction,
 ): boolean {
   if (quickAction && COACHING_QUICK_ACTIONS.has(quickAction)) return false
-  if (!isResumeGenerationConfirmed(lastUser)) return false
-
-  const activeGate = findMostRecentConfirmGate(messages)
-  if (activeGate === 'search') return false
-  if (activeGate === 'resume') return true
-
-  const lastAssistant = [...messages].reverse().find((m) => m.role === 'assistant')?.content ?? ''
-  if (advisorOfferedResumeConfirmation(lastAssistant)) return true
-
-  // Ongoing resume workflow: user re-confirms after edits, regeneration, or a prior resume output.
-  if (threadDiscussesResume(messages)) return true
-
-  return false
+  return isResumeActionConfirmed(lastUser, normalizeConversationState(state), messages)
 }
 
 /** User wants a resume eventually but not the formatted document on this turn. */
 export function isResumePreparationTurn(
-  messages: ResumeChatTurn[],
+  state: ConversationState | unknown,
   lastUser: string,
   hasUploadedDocument: boolean,
   quickAction?: ResumeTaskQuickAction,
+  messages: ResumeChatTurn[] = [],
 ): boolean {
   if (quickAction && COACHING_QUICK_ACTIONS.has(quickAction)) return false
-  if (shouldOutputResumeDocument(messages, lastUser, hasUploadedDocument, quickAction)) return false
+  if (shouldOutputResumeDocument(state, lastUser, messages, quickAction)) return false
   return isResumeDeliverableRequest(lastUser, hasUploadedDocument, quickAction)
 }
