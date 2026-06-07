@@ -21,14 +21,22 @@ describe('searchRecency', () => {
   it('detects listing-style search plans', () => {
     expect(
       isListingSearchPlan({
+        action: 'search_confirmation_required',
+        search_query: 'Accounting jobs in Hartford, CT in-person full-time',
+        user_facing_confirmation: 'accounting jobs in Hartford, CT',
+        search_category: 'jobs',
+        missing_required_info: [],
         bullets: ['Accounting jobs in Hartford, CT', 'In-person, full-time'],
-        rawPreview: '',
       }),
     ).toBe(true)
     expect(
       isListingSearchPlan({
+        action: 'search_confirmation_required',
+        search_query: 'Excel certification courses online under $500',
+        user_facing_confirmation: 'Excel certification courses online',
+        search_category: 'training',
+        missing_required_info: [],
         bullets: ['Excel certification courses online', 'Budget under $500'],
-        rawPreview: '',
       }),
     ).toBe(false)
   })
@@ -36,8 +44,12 @@ describe('searchRecency', () => {
   it('detects when recency is already in the plan', () => {
     expect(
       planAlreadyIncludesRecency({
+        action: 'search_confirmation_required',
+        search_query: 'Retail jobs posted within the last 30 days',
+        user_facing_confirmation: 'recent retail jobs',
+        search_category: 'jobs',
+        missing_required_info: [],
         bullets: ['Posted within the last 30 days'],
-        rawPreview: '',
       }),
     ).toBe(true)
   })

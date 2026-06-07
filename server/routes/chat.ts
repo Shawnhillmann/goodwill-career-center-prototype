@@ -11,12 +11,13 @@ import { invokeAdvisorWebSearch } from '../lib/webSearchExecute.js'
 import { isWebSearchEnabled } from '../lib/webSearchPolicy.js'
 import {
   evaluateSearchWorkflow,
+  finalizeAssistantSearchReply,
   isSearchConfirmationTurn,
+  reconstructPendingSearchState,
   shouldExecuteWebSearch,
 } from '../../shared/searchConfirm.js'
 import {
   clearPendingConversationState,
-  nextConversationStateAfterAssistant,
   normalizeConversationState,
   type ConversationState,
 } from '../../shared/conversationState.js'
@@ -119,7 +120,10 @@ chatRouter.post('/', async (req, res) => {
 
   const lastUser = [...messages].reverse().find((m) => m.role === 'user')?.content ?? ''
   const hasUploadedDocument = Boolean(body.uploadedDocumentText?.trim())
-  const conversationState = normalizeConversationState(body.conversationState)
+  const conversationState = reconstructPendingSearchState(
+    messages,
+    normalizeConversationState(body.conversationState),
+  )
   const searchConfirmationTurn = isSearchConfirmationTurn(conversationState, lastUser)
   const resumeDocumentTurn = isResumeDocumentTask(conversationState, lastUser, messages, quickAction)
 
@@ -152,6 +156,7 @@ chatRouter.post('/', async (req, res) => {
   const webAccessPrompt = buildWebAccessPrompt(webAccess.webFetchEnabled, webAccess.pages, {
     searchPhase: searchWorkflow.phase,
     searchMessages: messages,
+    searchAssessment: searchWorkflow.assessment,
   })
   const instructions =
     buildSystemPrompt(body.language, body.uploadedDocumentText, webAccessPrompt, { linkFetched }) + systemDocOnly
@@ -177,6 +182,9 @@ chatRouter.post('/', async (req, res) => {
       .join('; ') || undefined,
     openEndedSearchRequest: isOpenEndedWebSearchRequest(lastUser),
     searchWorkflowPhase: searchWorkflow.phase,
+    searchClassification: searchWorkflow.assessment?.classification,
+    searchConfidence: searchWorkflow.assessment?.confidence,
+    ambiguousEntity: searchWorkflow.assessment?.ambiguousEntity,
     webSearchExecute,
     userConfirmedSearch,
     searchPlanBullets: searchPlan?.bullets.length,
@@ -287,13 +295,13 @@ chatRouter.post('/', async (req, res) => {
         streamed: true,
       })
 
-      const responseState = resumeOnly
-        ? clearPendingConversationState()
-        : nextConversationStateAfterAssistant(reply)
+      const finalized = resumeOnly
+        ? { reply, conversationState: clearPendingConversationState() }
+        : finalizeAssistantSearchReply(reply)
 
       writeSse(res, 'done', {
-        reply,
-        conversationState: responseState,
+        reply: finalized.reply,
+        conversationState: finalized.conversationState,
         ...(resumeOnly ? { documentType: 'resume' } : {}),
       })
       endSse(res)
@@ -395,13 +403,13 @@ chatRouter.post('/', async (req, res) => {
       lastUserPreview: lastUser.slice(0, 80),
     })
 
-    const responseState = resumeOnly
-      ? clearPendingConversationState()
-      : nextConversationStateAfterAssistant(reply)
+    const finalized = resumeOnly
+      ? { reply, conversationState: clearPendingConversationState() }
+      : finalizeAssistantSearchReply(reply)
 
     return res.json({
-      reply,
-      conversationState: responseState,
+      reply: finalized.reply,
+      conversationState: finalized.conversationState,
       ...(resumeOnly ? { documentType: 'resume' } : {}),
     })
   } catch (err: unknown) {

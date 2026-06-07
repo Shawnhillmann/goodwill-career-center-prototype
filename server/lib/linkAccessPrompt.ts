@@ -1,5 +1,6 @@
 import type { PageFetchOutcome } from './pageFetch.js'
 import type { SearchWorkflowPhase, SearchChatTurn } from '../../shared/searchConfirm.js'
+import type { SearchRequestAssessment } from '../../shared/searchClassification.js'
 import { buildSearchPreviewExample, buildSearchWorkflowPrompt } from './searchWorkflowPrompt.js'
 import { isWebSearchEnabled } from './webSearchPolicy.js'
 
@@ -42,22 +43,24 @@ WEB ACCESS (strict):
 
 const OPEN_ENDED_JOB_REPLY_HINT = `
 When the user asks to find/search jobs (not general career coaching):
-- Gather every remaining detail in one conversational reply — role, location, in-person/remote, full/part-time, experience, commute miles, pay.
-- Keep it warm and natural; no "What I have so far" headers. Never drip one question at a time.
-- When covered, show a bullet search preview (include posted within the last 30 days for jobs) and ask them to reply CONFIRM SEARCH — do NOT search until they confirm.
+- Gather every remaining detail in one conversational reply when needed — role, location, in-person/remote, full/part-time, experience, commute miles, pay.
+- When ready, confirm clearly: "I can look that up. Just to confirm, you want me to search for..." Include posted within the last 30 days for jobs.
+- Append the structured SEARCH_PLAN block. Do NOT search until they confirm.
 ${ buildSearchPreviewExample() }
 `.trim()
 
 const OPEN_ENDED_RESOURCE_REPLY_HINT = `
 Resource or training searches without a link:
-- Ask what's missing in plain language; mention all gaps in one short reply when several remain.
-- When ready, show a search preview with bullet criteria and ask for CONFIRM SEARCH before searching.
+- Ask what's missing only when too vague (no location or resource type). Mention all gaps in one short reply when several remain.
+- When ready, restate the proposed search and append SEARCH_PLAN. Ask for confirmation before searching.
 `.trim()
 
 const OPEN_ENDED_GENERIC_REPLY_HINT = `
-Other live web lookup requests (any topic — companies, job fairs, people, certifications, etc.):
-- Clarify what they need, then preview exactly what you will search for, then wait for CONFIRM SEARCH.
-- After search runs, return at most 3 top results with source links.
+Other live web lookup requests (wages, people, places, companies, laws, events, schools, etc.):
+- Do NOT answer from memory when live lookup is needed.
+- Restate a clear proposed search and ask for confirmation before searching.
+- Ask a follow-up only when the search would be too vague to run usefully.
+- Append SEARCH_PLAN when ready. After search runs, return at most 3 top results with source links.
 - Alternatively they can paste a direct link or page text for faster help.
 `.trim()
 
@@ -105,11 +108,15 @@ export function buildFetchedPagesPromptBlock(pages: PageFetchOutcome[]): string 
 export function buildWebAccessPrompt(
   webFetchEnabled: boolean,
   pages: PageFetchOutcome[],
-  opts?: { searchPhase?: SearchWorkflowPhase; searchMessages?: SearchChatTurn[] },
+  opts?: {
+    searchPhase?: SearchWorkflowPhase
+    searchMessages?: SearchChatTurn[]
+    searchAssessment?: SearchRequestAssessment | null
+  },
 ): string {
   const searchPhase = opts?.searchPhase ?? 'none'
   const searchRules = isWebSearchEnabled()
-    ? buildSearchWorkflowPrompt(searchPhase, opts?.searchMessages)
+    ? buildSearchWorkflowPrompt(searchPhase, opts?.searchMessages, opts?.searchAssessment)
     : ''
   const baseHints = [
     searchRules,

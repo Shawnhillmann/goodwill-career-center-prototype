@@ -1,19 +1,26 @@
+import { assistantMessageHasSearchPlanBlock } from './searchPlan.js'
+
 export type ConfirmChatTurn = { role: 'user' | 'assistant'; content: string }
 
 export type PendingConfirmKind = 'search' | 'resume'
 
 /** Prior advisor message presented a search plan and asked for CONFIRM. */
 export function advisorOfferedSearchPreview(assistantText: string): boolean {
+  if (assistantMessageHasSearchPlanBlock(assistantText)) return true
+
   const s = assistantText.toLowerCase()
   const hasPlan =
     /\b(i will search for|i'm ready to search|ready to search|based on what you'?ve told me)\b/.test(s) ||
     /\bsearch for:\s*\n/i.test(assistantText) ||
-    /\bsearch for:\s*•/i.test(assistantText)
+    /\bsearch for:\s*•/i.test(assistantText) ||
+    /\bi can look that up\b/.test(s) ||
+    /\byou want me to search for\b/.test(s)
   const hasConfirmGate =
     /\b(reply|respond|type|say)\b[\s*"'`]*confirm(\s+search)?\b/.test(s) ||
     /\bconfirm\b.*\b(begin|start|search)/.test(s) ||
     /\bto begin (this |the )?search\b/.test(s) ||
-    /\bwould like me to begin this search\b/.test(s)
+    /\bwould like me to begin this search\b/.test(s) ||
+    /\bplease confirm before i search\b/.test(s)
   return hasPlan && hasConfirmGate
 }
 

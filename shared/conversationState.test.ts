@@ -10,6 +10,7 @@ import {
   RESUME_CONFIRM_PHRASE,
   SEARCH_CONFIRM_PHRASE,
 } from './conversationState'
+import { formatSearchPlanBlock } from './searchPlan'
 
 const searchPreview = `Based on what you've told me, I'm ready to search.
 
@@ -19,6 +20,17 @@ I will search for:
 
 Reply CONFIRM SEARCH if you would like me to begin this search.`
 
+const structuredPlan = {
+  action: 'search_confirmation_required' as const,
+  search_query: 'Accounting jobs in Middletown, CT in-person full-time',
+  user_facing_confirmation: 'accounting jobs in Middletown, CT',
+  search_category: 'jobs' as const,
+  search_confidence: 'high' as const,
+  missing_required_info: [] as string[],
+  bullets: ['Accounting jobs in Middletown, CT', 'In-person, full-time'],
+  rawPreview: searchPreview,
+}
+
 const resumeOffer =
   'Reply CONFIRM RESUME to generate your resume, or tell me what to change.'
 
@@ -26,13 +38,10 @@ describe('conversationState', () => {
   it('normalizes valid search pending state', () => {
     const state = normalizeConversationState({
       pendingAction: 'search',
-      pendingSearchPlan: {
-        bullets: ['Retail jobs in Hartford, CT'],
-        rawPreview: searchPreview,
-      },
+      pendingSearchPlan: structuredPlan,
     })
     expect(state.pendingAction).toBe('search')
-    expect(state.pendingSearchPlan?.bullets).toHaveLength(1)
+    expect(state.pendingSearchPlan?.search_query).toMatch(/Accounting jobs/)
   })
 
   it('clears invalid search state without a plan', () => {
@@ -73,6 +82,21 @@ describe('conversationState', () => {
     const searchState = nextConversationStateAfterAssistant(searchPreview)
     expect(isResumeActionConfirmed('confirm', searchState, messages)).toBe(false)
     expect(isSearchActionConfirmed('confirm', searchState)).toBe(true)
+  })
+
+  it('sets pending search state from structured assistant blocks', () => {
+    const reply = `I can look that up. Please confirm before I search.
+${ formatSearchPlanBlock({
+  action: 'search_confirmation_required',
+  search_query: 'John Smith Goodwill',
+  user_facing_confirmation: 'information about John Smith related to Goodwill',
+  search_category: 'people',
+  search_confidence: 'medium',
+  missing_required_info: [],
+  bullets: ['John Smith Goodwill'],
+}) }`
+    const state = nextConversationStateAfterAssistant(reply)
+    expect(state.pendingSearchPlan?.search_category).toBe('people')
   })
 
   it('clears pending state after action execution helper', () => {

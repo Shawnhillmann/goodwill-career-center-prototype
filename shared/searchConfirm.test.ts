@@ -7,11 +7,16 @@ import {
   advisorOfferedSearchPreview,
   evaluateSearchWorkflow,
   extractSearchPlan,
+  isLiveLookupRequest,
   isSearchIntentRequest,
   isWebSearchConfirmed,
+  reconstructPendingSearchState,
   shouldExecuteWebSearch,
   buildApprovedSearchQuery,
+  isSearchPlanRevisionRequest,
 } from './searchConfirm'
+import { formatSearchPlanBlock } from './searchPlan'
+import { finalizeAssistantSearchReply } from './searchFinalize'
 
 const previewMessage = `Based on what you've told me, I'm ready to search.
 
@@ -23,19 +28,32 @@ I will search for:
 
 Reply CONFIRM SEARCH to begin the search.`
 
+const structuredPreview = `I can look that up. Just to confirm, you want me to search for the current minimum wage in Connecticut, including any recent or upcoming changes. Please confirm before I search.
+${ formatSearchPlanBlock({
+  action: 'search_confirmation_required',
+  search_query: 'current minimum wage in Connecticut including recent changes',
+  user_facing_confirmation: 'the current minimum wage in Connecticut, including any recent or upcoming changes',
+  search_category: 'wages',
+  search_confidence: 'high',
+  missing_required_info: [],
+  bullets: ['Current minimum wage in Connecticut', 'Recent or upcoming wage changes'],
+}) }`
+
 describe('searchConfirm', () => {
   it('detects vague job search intent', () => {
     expect(isSearchIntentRequest('Find me entry level jobs')).toBe(true)
-    expect(isSearchIntentRequest('Find jobs near me')).toBe(true)
-    expect(isSearchIntentRequest('What is a cover letter?')).toBe(false)
-    expect(isSearchIntentRequest('Review https://example.com/jobs/1')).toBe(false)
+    expect(isLiveLookupRequest('Find jobs near me')).toBe(true)
+    expect(isLiveLookupRequest('What is a cover letter?')).toBe(false)
+    expect(isLiveLookupRequest('Review https://example.com/jobs/1')).toBe(false)
   })
 
   it('detects non-job live lookup intent', () => {
-    expect(isSearchIntentRequest('Find job fairs near Hartford CT')).toBe(true)
-    expect(isSearchIntentRequest('Search for tech companies in Boston')).toBe(true)
-    expect(isSearchIntentRequest('Look up OSHA safety certification requirements')).toBe(true)
-    expect(isSearchIntentRequest('How do I write a cover letter')).toBe(false)
+    expect(isLiveLookupRequest('Find job fairs near Hartford CT')).toBe(true)
+    expect(isLiveLookupRequest('Search for tech companies in Boston')).toBe(true)
+    expect(isLiveLookupRequest('Look up OSHA safety certification requirements')).toBe(true)
+    expect(isLiveLookupRequest('What is the current CT minimum wage?')).toBe(true)
+    expect(isLiveLookupRequest('minimum wage ct')).toBe(true)
+    expect(isLiveLookupRequest('How do I write a cover letter')).toBe(false)
   })
 
   it('accepts explicit search confirmations', () => {
@@ -49,6 +67,13 @@ describe('searchConfirm', () => {
   it('detects advisor search previews', () => {
     expect(advisorOfferedSearchPreview(previewMessage)).toBe(true)
     expect(extractSearchPlan(previewMessage)?.bullets.length).toBeGreaterThanOrEqual(3)
+  })
+
+  it('extracts structured search plans and strips hidden blocks', () => {
+    const finalized = finalizeAssistantSearchReply(structuredPreview)
+    expect(finalized.reply).not.toMatch(/SEARCH_PLAN/)
+    expect(finalized.conversationState.pendingSearchPlan?.search_category).toBe('wages')
+    expect(finalized.conversationState.pendingSearchPlan?.user_facing_confirmation).toMatch(/minimum wage/i)
   })
 
   it('blocks search until preview and confirm', () => {
@@ -65,7 +90,7 @@ describe('searchConfirm', () => {
       ],
       'Can you include part-time too?',
     )
-    expect(awaiting.phase).toBe('awaiting_confirm')
+    expect(awaiting.phase).toBe('clarifying')
 
     const messages = [
       { role: 'user', content: 'Find retail jobs in Middletown CT' },
@@ -77,30 +102,41 @@ describe('searchConfirm', () => {
     expect(evaluateSearchWorkflow([...messages], SEARCH_CONFIRM_PHRASE, state).phase).toBe('execute')
   })
 
-  it('parses accounting search preview from confirm-first workflow', () => {
-    const accountingPreview = `Based on what you've told me, I'm ready to search. I will search for:
-• Accounting jobs (bookkeeper, staff accountant, accounting clerk, payroll clerk, etc.)
-• In-person positions
-• Within 15 miles of Middletown, CT
-• Full-time and part-time opportunities
+  it('treats search revisions as clarifying', () => {
+    const state = nextConversationStateAfterAssistant(previewMessage)
+    expect(isSearchPlanRevisionRequest('make it part time cashier jobs', state)).toBe(true)
+    const revised = evaluateSearchWorkflow(
+      [
+        { role: 'user', content: 'Find retail jobs in Hartford' },
+        { role: 'assistant', content: previewMessage },
+      ],
+      'make it part time cashier jobs',
+      state,
+    )
+    expect(revised.phase).toBe('clarifying')
+  })
 
-Reply CONFIRM SEARCH if you would like me to begin this search.`
-
-    expect(advisorOfferedSearchPreview(accountingPreview)).toBe(true)
-    const plan = extractSearchPlan(accountingPreview)
-    expect(plan?.bullets.length).toBeGreaterThanOrEqual(4)
-    expect(plan?.bullets.some((b) => /accounting/i.test(b))).toBe(true)
-
-    const state = nextConversationStateAfterAssistant(accountingPreview)
-    expect(shouldExecuteWebSearch(state, SEARCH_CONFIRM_PHRASE)).toBe(true)
+  it('reconstructs pending search state from message history', () => {
+    const messages = [
+      { role: 'user', content: 'minimum wage ct' },
+      { role: 'assistant', content: structuredPreview },
+    ]
+    const state = reconstructPendingSearchState(messages, { pendingAction: null })
+    expect(state.pendingAction).toBe('search')
+    expect(state.pendingSearchPlan?.search_query).toMatch(/minimum wage/i)
   })
 
   it('adds 30-day recency rules to approved job search queries', () => {
     const ref = new Date('2026-06-04T12:00:00.000Z')
     const query = buildApprovedSearchQuery(
       {
+        action: 'search_confirmation_required',
+        search_query: 'Accounting jobs in Middletown, CT in-person full-time',
+        user_facing_confirmation: 'accounting jobs in Middletown, CT',
+        search_category: 'jobs',
+        search_confidence: 'high',
+        missing_required_info: [],
         bullets: ['Accounting jobs in Middletown, CT', 'In-person, full-time'],
-        rawPreview: '',
       },
       ref,
     )

@@ -38,7 +38,10 @@ import { createStreamTextReveal } from '../lib/streamTextReveal'
 import { isResumeOutputRequest } from '../lib/resumeTask'
 import { isSearchConfirmationTurn } from '../../shared/searchConfirm'
 import {
-  EMPTY_CONVERSATION_STATE,
+  loadPersistedConversationState,
+  persistConversationState,
+} from '../lib/conversationStateStorage'
+import {
   RESUME_CONFIRM_PHRASE,
   SEARCH_CONFIRM_PHRASE,
   type ConversationState,
@@ -123,7 +126,9 @@ export function CareerAdvisorCard({
   const [pendingAttachment, setPendingAttachment] = useState<{ name: string; text: string } | null>(null)
   const [pendingUploadName, setPendingUploadName] = useState<string | null>(null)
   const [documentContext, setDocumentContext] = useState<string | null>(null)
-  const [conversationState, setConversationState] = useState<ConversationState>(EMPTY_CONVERSATION_STATE)
+  const [conversationState, setConversationState] = useState<ConversationState>(() =>
+    loadPersistedConversationState(),
+  )
   const [uploading, setUploading] = useState(false)
   const [voiceInputAvailable, setVoiceInputAvailable] = useState(false)
   const mobileChatLayout = useMediaQuery('(max-width: 1023px)')
@@ -404,6 +409,10 @@ export function CareerAdvisorCard({
     if (!chatEmpty) stickToBottomRef.current = true
     if (chatEmpty) onMobileHeaderCompactChange?.(false)
   }, [chatEmpty, onChatActiveChange, onMobileHeaderCompactChange])
+
+  useEffect(() => {
+    persistConversationState(conversationState)
+  }, [conversationState])
 
   useMobileChatViewport(mobileChatLayout && !chatEmpty)
 
@@ -806,6 +815,8 @@ export function CareerAdvisorCard({
   const canSend = !uploading && (draft.trim().length > 0 || Boolean(pendingAttachment))
   const showPendingSearchConfirm =
     !awaitingAdvisor && conversationState.pendingAction === 'search' && Boolean(conversationState.pendingSearchPlan)
+  const pendingSearchConfirmation =
+    conversationState.pendingSearchPlan?.user_facing_confirmation?.trim() ?? ''
   const showPendingResumeConfirm =
     !awaitingAdvisor && conversationState.pendingAction === 'resume'
 
@@ -1052,13 +1063,18 @@ export function CareerAdvisorCard({
             {showPendingSearchConfirm || showPendingResumeConfirm ? (
               <div className="pending-confirm-actions" role="group" aria-label={ ui.quickActionsAria }>
                 {showPendingSearchConfirm ? (
-                  <button
-                    type="button"
-                    className="quick-pill pending-confirm-actions__btn"
-                    onClick={ () => handlePendingConfirm(SEARCH_CONFIRM_PHRASE) }
-                  >
-                    { ui.confirmSearchAction }
-                  </button>
+                  <>
+                    {pendingSearchConfirmation ? (
+                      <p className="pending-confirm-actions__summary">{ pendingSearchConfirmation }</p>
+                    ) : null}
+                    <button
+                      type="button"
+                      className="quick-pill pending-confirm-actions__btn"
+                      onClick={ () => handlePendingConfirm(SEARCH_CONFIRM_PHRASE) }
+                    >
+                      { ui.confirmSearchAction }
+                    </button>
+                  </>
                 ) : null}
                 {showPendingResumeConfirm ? (
                   <button

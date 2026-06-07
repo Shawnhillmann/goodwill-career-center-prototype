@@ -1,9 +1,5 @@
-import { advisorOfferedResumeConfirmation } from './confirmGate.js'
-import {
-  advisorOfferedSearchPreview,
-  extractSearchPlan,
-  type SearchPlan,
-} from './searchConfirm.js'
+import { finalizeAssistantSearchReply } from './searchFinalize.js'
+import { normalizeSearchPlan as normalizeStructuredSearchPlan, type SearchPlan } from './searchPlan.js'
 import { looksLikeResume } from './resumeParse.js'
 
 export type PendingAction = 'search' | 'resume'
@@ -26,13 +22,7 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 }
 
 function normalizeSearchPlan(raw: unknown): SearchPlan | undefined {
-  if (!isRecord(raw)) return undefined
-  const bullets = Array.isArray(raw.bullets)
-    ? raw.bullets.filter((b): b is string => typeof b === 'string' && b.trim().length > 0)
-    : []
-  const rawPreview = typeof raw.rawPreview === 'string' ? raw.rawPreview : ''
-  if (bullets.length === 0) return undefined
-  return { bullets, rawPreview }
+  return normalizeStructuredSearchPlan(raw)
 }
 
 /** Parse client-supplied conversation state; unknown shapes become empty. */
@@ -62,7 +52,7 @@ export function clearPendingConversationState(): ConversationState {
 }
 
 const CANCEL_CONFIRM_RE =
-  /\b(don't|do not|not yet|wait|cancel|stop|never mind|nevermind|change|edit|update|revise)\b/i
+  /\b(don't|do not|not yet|wait|cancel|stop|never mind|nevermind)\b/i
 
 export function isBareConfirmMessage(message: string): boolean {
   return /^(confirm|confirmed|yes|yep|yeah|yup|ok|okay|sure|go ahead|proceed)\.?!?$/i.test(
@@ -100,7 +90,7 @@ export function isResumeConfirmMessage(message: string): boolean {
 }
 
 export function isSearchActionConfirmed(message: string, state: ConversationState): boolean {
-  if (state.pendingAction !== 'search' || !state.pendingSearchPlan?.bullets.length) return false
+  if (state.pendingAction !== 'search' || !state.pendingSearchPlan?.search_query?.trim()) return false
   if (isSearchConfirmMessage(message)) return true
   return isBareConfirmMessage(message)
 }
@@ -148,14 +138,5 @@ export function isResumeActionConfirmed(
 
 /** Set pending action from a newly generated assistant reply (one-time, not from history scan). */
 export function nextConversationStateAfterAssistant(assistantReply: string): ConversationState {
-  if (advisorOfferedSearchPreview(assistantReply)) {
-    const plan = extractSearchPlan(assistantReply)
-    if (plan?.bullets.length) {
-      return { pendingAction: 'search', pendingSearchPlan: plan }
-    }
-  }
-  if (advisorOfferedResumeConfirmation(assistantReply)) {
-    return { pendingAction: 'resume' }
-  }
-  return clearPendingConversationState()
+  return finalizeAssistantSearchReply(assistantReply).conversationState as ConversationState
 }

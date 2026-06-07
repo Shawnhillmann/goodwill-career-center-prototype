@@ -1,4 +1,4 @@
-import type { SearchPlan } from './searchConfirm.js'
+import type { SearchPlan } from './searchPlan.js'
 
 export const LISTING_SEARCH_RECENCY_DAYS = 30
 
@@ -40,7 +40,8 @@ export function getListingSearchRecencyWindow(
 
 /** Job openings, hiring events, and similar listings that go stale. */
 export function isListingSearchPlan(plan: SearchPlan): boolean {
-  const text = plan.bullets.join(' ').toLowerCase()
+  if (plan.search_category === 'jobs') return true
+  const text = [plan.search_query, ...plan.bullets].join(' ').toLowerCase()
   const looksLikeListing =
     /\b(jobs?|openings?|positions?|listings?|hiring|career events?|job fairs?|companies are hiring)\b/.test(
       text,

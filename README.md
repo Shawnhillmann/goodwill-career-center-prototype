@@ -69,7 +69,7 @@ Redeploy after changing env vars. Verify: `https://<your-app>.vercel.app/api/hea
 
 ## API endpoints
 
-- `POST /api/chat` — Career coaching and document analysis. Returns `{ reply }`. Link-only page fetch when the user pastes a URL (no open-ended web search).
+- `POST /api/chat` — Career coaching, confirm-first web search, and document analysis. Returns `{ reply, conversationState }`. Supports streaming via SSE when `stream: true`.
 - `POST /api/upload` — Upload `.docx`, `.pdf`, or `.txt` (max 5MB) and returns extracted text.
 - `POST /api/document/export` — Download chat content as `.docx` or `.pdf`.
 - `POST /api/document/resume` — Generate a downloadable `.docx` from resume text.
@@ -78,14 +78,81 @@ Redeploy after changing env vars. Verify: `https://<your-app>.vercel.app/api/hea
 
 Single OpenAI path for all advisor replies (`gpt-5-mini` via `OPENAI_MODEL` by default):
 
-1. **Conversation** — coaching, interview prep, job search guidance (no live listings)
-2. **Uploaded documents** — resume analysis, tailoring, cover letters
-3. **Doc-only generation** — full resume/CV/cover letter output when requested
+1. **Conversation** — career coaching, interview prep, educational explanations
+2. **Confirm-first web search** — live lookup for any topic (jobs, wages, people, places, programs, laws, events, etc.)
+3. **User-provided URLs** — server fetches pasted links and supplies page text to the model
+4. **Uploaded documents** — resume analysis, tailoring, cover letters
+5. **Doc-only generation** — full resume/CV/cover letter output when requested
 
-The advisor does **not** perform open-ended web search. When a user pastes a specific job, resource, or training URL, the server fetches only that link and supplies the page text to the model. For broad job or resource requests without a link, it coaches users on search terms, platforms, and filters and asks them to paste links back.
+### Web access model
+
+The advisor has three ways to use live or external information:
+
+| Mode | When | What happens |
+|------|------|----------------|
+| **Coaching / education** | Evergreen concepts, how-to questions | Answer directly from the model — no search workflow |
+| **Confirm-first web search** | Current, local, external, or changing facts | Clarify if needed → proposed search → user confirms → OpenAI `web_search` runs |
+| **URL paste** | User includes a specific link | Server fetches that page only (`pageFetch`) — separate from open-ended search |
+
+**Live search never runs automatically.** The user must explicitly confirm (e.g. **CONFIRM SEARCH** button or typed confirmation) after seeing a proposed search.
+
+### Search workflow (topic-agnostic)
+
+Search is **not job-only**. Users can look up jobs, wages, people, organizations, training, laws, local resources, companies, schools, events, and other real-world topics.
+
+Flow:
+
+1. **Classify** the user message (`shared/searchClassification.ts`)
+   - **Coaching** — e.g. “What is a resume?”, “How do I prepare for an interview?” → normal reply
+   - **Clarification required** — ambiguous or low-confidence requests (e.g. “john smith”, “goodwill”, “resources”) → ask follow-ups first; do not create a search plan yet
+   - **Search confirmation** — specific enough to propose a search → restate query and ask for confirmation
+2. **Clarify if needed** — job searches use a richer detail checklist; non-job searches only clarify when too vague
+3. **Proposed search** — assistant restates: “I can look that up. Just to confirm, you want me to search for…”
+4. **CONFIRM SEARCH** — user approves via button or phrase
+5. **Execution** — server calls OpenAI Responses API with `web_search` (enabled by default; set `WEB_SEARCH_ENABLED=0` to disable)
+
+Classification rules (summary):
+
+- **Enter confirmation:** current/local/external/changing facts — minimum wage, hiring near a city, OSHA training near Hartford, who runs Goodwill in Boston, etc.
+- **Stay coaching:** general knowledge and career education — what is networking, what is OSHA (as a concept), how cover letters work, transferable skills, interview prep
+- **Clarify first:** bare names, single org names, generic words (“resources”, “jobs”) without enough context
+
+Search confidence (`high` / `medium` / `low`) controls whether the assistant may offer a search plan immediately or must ask clarifying questions first. See `shared/searchClassification.ts` and `shared/searchClassification.test.ts`.
+
+### Structured search plans (implementation detail)
+
+When ready to confirm, the assistant appends a hidden metadata block to its reply:
+
+```html
+<!--SEARCH_PLAN:{"action":"search_confirmation_required","search_query":"...","search_confidence":"high",...}-->
+```
+
+The server strips this before displaying the message and stores the parsed plan in `conversationState.pendingSearchPlan`. The UI shows the confirmation prompt and **Confirm search** button from that structured state (also persisted in `localStorage` for refresh recovery).
+
+This hidden-block approach is the **current implementation**. A follow-up may move `searchPlan` to a top-level API response field instead of embedding it in assistant content.
+
+Key modules:
+
+| Module | Purpose |
+|--------|---------|
+| `shared/searchClassification.ts` | Coaching vs clarification vs search confirmation; confidence scoring |
+| `shared/searchPlan.ts` | `SearchPlan` type, block format, normalization |
+| `shared/searchFinalize.ts` | Parse/strip `SEARCH_PLAN` from assistant replies |
+| `shared/searchConfirm.ts` | Workflow phases, confirm gate, state reconstruction |
+| `shared/conversationState.ts` | Pending search/resume actions |
+| `server/lib/searchWorkflowPrompt.ts` | Prompt rules per workflow phase |
+| `server/routes/chat.ts` | Routes confirm turns to `web_search` execution |
+
+Server logs include `searchClassification`, `searchConfidence`, and `ambiguousEntity` on each chat request for debugging.
+
+Optional env:
+
+```bash
+WEB_SEARCH_ENABLED=1   # default on; set 0 or false to disable live search execution
+```
 
 ## Architecture constraints (by design)
 - No database
 - No auth/login
 - No credentials in the browser
-- No open-ended web search (user-provided URLs only)
+- Live web search requires explicit user confirmation (never automatic)

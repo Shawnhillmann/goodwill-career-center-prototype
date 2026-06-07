@@ -1,5 +1,5 @@
 import { extractUserProvidedUrls, hasUserProvidedUrl } from '../../shared/urlDetect.js'
-import { isSearchIntentRequest } from '../../shared/searchConfirm.js'
+import { isLiveLookupRequest } from '../../shared/searchConfirm.js'
 import { fetchUserProvidedPages, type PageFetchOutcome } from './pageFetch.js'
 
 export type WebAccessContext = {
@@ -18,7 +18,7 @@ export function shouldFetchUserProvidedPages(lastUserMessage: string): boolean {
 
 /** Open-ended browse requests without a link — coaching / confirm-before-search workflow. */
 export function isOpenEndedWebSearchRequest(text: string): boolean {
-  return isSearchIntentRequest(text)
+  return isLiveLookupRequest(text)
 }
 
 export async function buildWebAccessContext(lastUserMessage: string): Promise<WebAccessContext> {
