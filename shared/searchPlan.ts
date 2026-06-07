@@ -190,3 +190,92 @@ export function planCriteriaSummary(plan: SearchPlan): string {
 export function isJobCategoryPlan(plan: SearchPlan): boolean {
   return plan.search_category === 'jobs'
 }
+
+export function planCorpus(plan: SearchPlan): string {
+  return [plan.search_query, plan.user_facing_confirmation, ...plan.bullets].join('\n').toLowerCase()
+}
+
+const VAGUE_JOB_ONLY_RE =
+  /^(?:find|search for|look for|look up|help me find)?\s*(?:me\s+)?jobs?\??$|^(?:find|search for)\s+(?:me\s+)?jobs?\??$|^jobs?\s+near me$|^jobs?\??$/
+
+const SPECIFIC_JOB_ROLE_RE =
+  /\b(accountant|accounting|bookkeeper|retail|warehouse|nurse|teacher|driver|admin|clerk|cashier|specialist|manager|engineer|developer|healthcare|hospitality|food service|customer service|manufacturing|forklift|laborer|custodian|security guard|receptionist|billing|payroll)\b/
+
+const JOB_LOCATION_OR_WORK_MODE_RE =
+  /\b(in|near|around|within)\s+[a-z][a-z\s,.'-]{2,40}(?:,\s*[a-z]{2})?\b|\b(within|under)\s+\d+\s*(mile|mi|miles)\b|\b(hartford|middletown|new haven|bridgeport|stamford|waterbury|boston|nyc|new york)\b|\b\d{5}\b|\b(in[- ]person|on[- ]site|remote|hybrid|work from home|wfh)\b/
+
+const JOB_EVENT_OR_FAIR_RE = /\b(hiring events?|job fairs?|career fairs?|public hiring)\b/
+
+const CLARIFICATION_LANGUAGE_RE =
+  /\b(waiting for|tell me|before i search|need to know|still need|reply with those details|once you share|when you share|what city or zip|which city or zip|location and job preferences)\b/i
+
+/** Job searches need a specific role/type plus location, ZIP, or work mode — not bare "jobs". */
+export function hasJobSearchMinimumForExecution(plan: SearchPlan): boolean {
+  const corpus = planCorpus(plan)
+  if (VAGUE_JOB_ONLY_RE.test(corpus.trim())) return false
+
+  const hasSpecificRole =
+    SPECIFIC_JOB_ROLE_RE.test(corpus) ||
+    JOB_EVENT_OR_FAIR_RE.test(corpus) ||
+    /\bwhat companies are hiring\b/.test(corpus) ||
+    /\b(amazon|walmart|target|costco|ups|fedex)\b.{0,30}\b(jobs?|warehouse|delivery|work)\b/.test(corpus) ||
+    /\b(part[- ]time|full[- ]time|entry[- ]level)\b.{0,40}\b(jobs?|work|positions?)\b/.test(corpus) ||
+    /\b(jobs?|work|positions?|openings?)\b.{0,40}\b(warehouse|retail|cashier|accounting|nurse|driver|admin|healthcare|hospitality)\b/.test(
+      corpus,
+    )
+
+  const hasLocationOrWorkMode =
+    JOB_LOCATION_OR_WORK_MODE_RE.test(corpus) ||
+    (/\bnear me\b/.test(corpus) &&
+      (SPECIFIC_JOB_ROLE_RE.test(corpus) ||
+        /\b(amazon|walmart|target|warehouse|retail|cashier|accounting|nurse|driver)\b/.test(corpus) ||
+        /\b(jobs?|work|positions?)\b.{0,40}\b(warehouse|retail|cashier|accounting|nurse|driver|admin|healthcare|hospitality)\b/.test(
+          corpus,
+        )))
+
+  return hasSpecificRole && hasLocationOrWorkMode
+}
+
+/** User job-search wording too vague to offer Confirm search yet. */
+export function isVagueJobSearchRequest(text: string): boolean {
+  const s = text.toLowerCase().trim()
+  if (!/\b(jobs?|openings?|positions?|hiring|work|help me find)\b/.test(s)) return false
+
+  return !hasJobSearchMinimumForExecution({
+    action: 'search_confirmation_required',
+    search_query: text,
+    user_facing_confirmation: text,
+    search_category: 'jobs',
+    search_confidence: 'medium',
+    missing_required_info: [],
+    bullets: [text],
+  })
+}
+
+/** True only when a plan is complete enough to show Confirm search and execute on approval. */
+export function isExecutableSearchPlan(plan: SearchPlan): boolean {
+  if (plan.search_confidence === 'low') return false
+  if (plan.missing_required_info.length > 0) return false
+  if (!plan.search_query.trim()) return false
+
+  const corpus = planCorpus(plan)
+  if (CLARIFICATION_LANGUAGE_RE.test(plan.user_facing_confirmation)) return false
+  if (CLARIFICATION_LANGUAGE_RE.test(corpus)) return false
+
+  if (plan.search_category === 'jobs' || isJobCategoryPlan(plan)) {
+    return hasJobSearchMinimumForExecution(plan)
+  }
+
+  return plan.search_confidence === 'high' || plan.search_confidence === 'medium'
+}
+
+/** UI/server gate for showing or honoring Confirm search. */
+export function isPendingSearchConfirmVisible(state: {
+  pendingAction: string | null
+  pendingSearchPlan?: SearchPlan
+}): boolean {
+  return (
+    state.pendingAction === 'search' &&
+    Boolean(state.pendingSearchPlan && isExecutableSearchPlan(state.pendingSearchPlan))
+  )
+}

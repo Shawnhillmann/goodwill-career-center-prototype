@@ -5,6 +5,7 @@ import {
 } from './conversationState'
 import {
   advisorOfferedSearchPreview,
+  classifyUserRequest,
   evaluateSearchWorkflow,
   extractSearchPlan,
   isLiveLookupRequest,
@@ -41,7 +42,9 @@ ${ formatSearchPlanBlock({
 
 describe('searchConfirm', () => {
   it('detects vague job search intent', () => {
-    expect(isSearchIntentRequest('Find me entry level jobs')).toBe(true)
+    expect(classifyUserRequest('Find me entry level jobs').classification).toBe('clarification_required')
+    expect(classifyUserRequest('Find jobs near me').classification).toBe('clarification_required')
+    expect(isLiveLookupRequest('Find me entry level jobs')).toBe(true)
     expect(isLiveLookupRequest('Find jobs near me')).toBe(true)
     expect(isLiveLookupRequest('What is a cover letter?')).toBe(false)
     expect(isLiveLookupRequest('Review https://example.com/jobs/1')).toBe(false)

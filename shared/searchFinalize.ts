@@ -1,6 +1,7 @@
 import { advisorOfferedResumeConfirmation } from './confirmGate.js'
 import {
   extractStructuredSearchPlanBlock,
+  isExecutableSearchPlan,
   normalizeSearchPlan,
   stripSearchPlanBlock,
   assistantMessageHasSearchPlanBlock,
@@ -86,7 +87,7 @@ export function finalizeAssistantSearchReply(assistantReply: string): FinalizedA
   const plan = extractSearchPlan(assistantReply)
   const reply = stripSearchPlanBlock(assistantReply)
 
-  if (plan?.search_query) {
+  if (plan?.search_query && isExecutableSearchPlan(plan)) {
     return {
       reply,
       conversationState: {

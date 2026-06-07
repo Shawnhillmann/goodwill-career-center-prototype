@@ -67,6 +67,7 @@ WEB SEARCH — CLARIFICATION PHASE (mandatory):
 - SEARCH CONFIDENCE:
   • HIGH or MEDIUM confidence → generate a proposed search immediately with the SEARCH_PLAN block and ask for confirmation.
   • LOW confidence or ambiguous entity (e.g. "john smith", "goodwill", "resources" alone) → ask clarifying questions first. Do NOT append SEARCH_PLAN until you have enough detail.
+- NEVER append SEARCH_PLAN when missing_required_info is non-empty, search_confidence is low, or you are still asking clarifying questions.
 - Ambiguous people: "There are many people named [name]. Who are you looking for?" Do not search yet.
 - Ambiguous organizations like "goodwill" alone: ask whether they mean locations, jobs, training, organizational info, or something else.
 - Transform clear requests into: "I can look that up. Just to confirm, you want me to search for [clear rephrased query]. Please confirm before I search."

@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest'
+import { classifyUserRequest } from './searchClassification'
 import {
+  assessSearchConfidence,
   extractStructuredSearchPlanBlock,
   formatSearchPlanBlock,
   inferSearchCategory,
@@ -25,8 +27,13 @@ describe('searchPlan', () => {
 
   it('detects job and company hiring lookup', () => {
     expect(isLiveLookupRequest('What companies are hiring near Hartford?')).toBe(true)
+    expect(classifyUserRequest('What companies are hiring near Hartford?').classification).toBe(
+      'search_confirmation',
+    )
     expect(isLiveLookupRequest('Find me entry level jobs')).toBe(true)
+    expect(classifyUserRequest('Find me entry level jobs').classification).toBe('clarification_required')
     expect(isLiveLookupRequest('jobs near me')).toBe(true)
+    expect(classifyUserRequest('jobs near me').classification).toBe('clarification_required')
   })
 
   it('parses and strips structured search plan blocks', () => {

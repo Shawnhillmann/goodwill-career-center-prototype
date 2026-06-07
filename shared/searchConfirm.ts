@@ -1,9 +1,10 @@
 import { advisorOfferedResumeConfirmation } from './confirmGate.js'
 import {
-  type ConversationState,
   EMPTY_CONVERSATION_STATE,
   isSearchActionConfirmed,
+  isPendingSearchConfirmVisible,
   normalizeConversationState,
+  type ConversationState,
 } from './conversationState.js'
 import {
   buildListingRecencyInstructions,
@@ -13,6 +14,7 @@ import { buildSearchResultLimitInstructions } from './searchLimits.js'
 import { extractSearchPlan } from './searchFinalize.js'
 import {
   classifyUserRequest,
+  isExecutableSearchPlan,
   type SearchPlan,
 } from './searchPlan.js'
 
@@ -77,7 +79,9 @@ export function findSearchPreviewMessage(messages: SearchChatTurn[]): string {
 export function resolveSearchPlan(messages: SearchChatTurn[]): SearchPlan | null {
   const preview = findSearchPreviewMessage(messages)
   if (!preview) return null
-  return extractSearchPlan(preview)
+  const plan = extractSearchPlan(preview)
+  if (!plan || !isExecutableSearchPlan(plan)) return null
+  return plan
 }
 
 /** Reconstruct pending search state from persisted state or message history. */
@@ -87,13 +91,14 @@ export function reconstructPendingSearchState(
 ): ConversationState {
   if (
     storedState.pendingAction === 'search' &&
-    storedState.pendingSearchPlan?.search_query?.trim()
+    storedState.pendingSearchPlan?.search_query?.trim() &&
+    isExecutableSearchPlan(storedState.pendingSearchPlan)
   ) {
     return storedState
   }
 
   const fromHistory = resolveSearchPlan(messages)
-  if (fromHistory) {
+  if (fromHistory && isExecutableSearchPlan(fromHistory)) {
     return { pendingAction: 'search', pendingSearchPlan: fromHistory }
   }
 
@@ -118,7 +123,7 @@ export function assessUserSearchRequest(text: string) {
 
 /** User is revising a pending search instead of confirming it. */
 export function isSearchPlanRevisionRequest(message: string, state: ConversationState): boolean {
-  if (state.pendingAction !== 'search' || !state.pendingSearchPlan) return false
+  if (!isPendingSearchConfirmVisible(state)) return false
   if (isSearchActionConfirmed(message, state)) return false
   if (CANCEL_SEARCH_RE.test(message)) return false
   return message.trim().length > 0
@@ -135,13 +140,14 @@ export function getSearchWorkflowPhase(
 ): SearchWorkflowPhase {
   if (shouldExecuteWebSearch(state, lastUser)) return 'execute'
 
-  if (state.pendingAction === 'search' && state.pendingSearchPlan) {
+  if (state.pendingAction === 'search' && state.pendingSearchPlan && isExecutableSearchPlan(state.pendingSearchPlan)) {
     if (isSearchPlanRevisionRequest(lastUser, state)) return 'clarifying'
     return 'awaiting_confirm'
   }
 
   const lastAssistant = lastAssistantMessage(messages)
-  if (lastAssistant && extractSearchPlan(lastAssistant)) {
+  const lastPlan = lastAssistant ? extractSearchPlan(lastAssistant) : null
+  if (lastPlan && isExecutableSearchPlan(lastPlan)) {
     return isSearchPlanRevisionRequest(lastUser, state) ? 'clarifying' : 'awaiting_confirm'
   }
 

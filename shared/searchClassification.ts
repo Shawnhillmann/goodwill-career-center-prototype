@@ -1,3 +1,5 @@
+import { isVagueJobSearchRequest } from './searchPlan.js'
+
 export type SearchConfidence = 'high' | 'medium' | 'low'
 
 export type SearchRequestClassification =
@@ -179,11 +181,11 @@ export function isCoachingRequest(text: string): boolean {
 }
 
 /**
- * @deprecated Prefer classifyUserRequest().classification === 'search_confirmation'
+ * @deprecated Prefer classifyUserRequest().classification !== 'coaching'
  */
 export function isLiveLookupRequest(text: string): boolean {
   const result = classifyUserRequest(text)
-  return result.classification === 'search_confirmation'
+  return result.classification === 'search_confirmation' || result.classification === 'clarification_required'
 }
 
 /** @deprecated Alias for isLiveLookupRequest */
@@ -232,6 +234,14 @@ export function classifyUserRequest(text: string): SearchRequestAssessment {
   }
   if (isEducationalQuestion(text)) {
     return { classification: 'coaching', confidence: null, reasons: ['educational_concept_question'] }
+  }
+
+  if (isVagueJobSearchRequest(text)) {
+    return {
+      classification: 'clarification_required',
+      confidence: 'low',
+      reasons: ['vague_job_search'],
+    }
   }
 
   // 3. Ambiguous entity-only

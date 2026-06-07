@@ -1,5 +1,6 @@
 import {
   EMPTY_CONVERSATION_STATE,
+  isPendingSearchConfirmVisible,
   normalizeConversationState,
   type ConversationState,
 } from '../../shared/conversationState'
@@ -20,6 +21,10 @@ export function loadPersistedConversationState(): ConversationState {
 export function persistConversationState(state: ConversationState): void {
   if (typeof localStorage === 'undefined') return
   if (state.pendingAction && (state.pendingSearchPlan || state.pendingAction === 'resume')) {
+    if (state.pendingAction === 'search' && !isPendingSearchConfirmVisible(state)) {
+      localStorage.removeItem(STORAGE_KEY)
+      return
+    }
     localStorage.setItem(STORAGE_KEY, JSON.stringify(state))
     return
   }

@@ -42,6 +42,7 @@ import {
   persistConversationState,
 } from '../lib/conversationStateStorage'
 import {
+  isPendingSearchConfirmVisible,
   RESUME_CONFIRM_PHRASE,
   SEARCH_CONFIRM_PHRASE,
   type ConversationState,
@@ -814,7 +815,7 @@ export function CareerAdvisorCard({
   const composerHasAttachment = Boolean(pendingUploadName || pendingAttachment)
   const canSend = !uploading && (draft.trim().length > 0 || Boolean(pendingAttachment))
   const showPendingSearchConfirm =
-    !awaitingAdvisor && conversationState.pendingAction === 'search' && Boolean(conversationState.pendingSearchPlan)
+    !awaitingAdvisor && isPendingSearchConfirmVisible(conversationState)
   const pendingSearchConfirmation =
     conversationState.pendingSearchPlan?.user_facing_confirmation?.trim() ?? ''
   const showPendingResumeConfirm =

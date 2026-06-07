@@ -1,5 +1,10 @@
 import { finalizeAssistantSearchReply } from './searchFinalize.js'
-import { normalizeSearchPlan as normalizeStructuredSearchPlan, type SearchPlan } from './searchPlan.js'
+import {
+  isExecutableSearchPlan,
+  isPendingSearchConfirmVisible,
+  normalizeSearchPlan as normalizeStructuredSearchPlan,
+  type SearchPlan,
+} from './searchPlan.js'
 import { looksLikeResume } from './resumeParse.js'
 
 export type PendingAction = 'search' | 'resume'
@@ -36,7 +41,7 @@ export function normalizeConversationState(raw: unknown): ConversationState {
   const pendingResumeDraftContext =
     typeof raw.pendingResumeDraftContext === 'string' ? raw.pendingResumeDraftContext : undefined
 
-  if (pendingAction === 'search' && !pendingSearchPlan) {
+  if (pendingAction === 'search' && (!pendingSearchPlan || !isExecutableSearchPlan(pendingSearchPlan))) {
     return { ...EMPTY_CONVERSATION_STATE }
   }
 
@@ -90,7 +95,7 @@ export function isResumeConfirmMessage(message: string): boolean {
 }
 
 export function isSearchActionConfirmed(message: string, state: ConversationState): boolean {
-  if (state.pendingAction !== 'search' || !state.pendingSearchPlan?.search_query?.trim()) return false
+  if (!isPendingSearchConfirmVisible(state)) return false
   if (isSearchConfirmMessage(message)) return true
   return isBareConfirmMessage(message)
 }
@@ -140,3 +145,5 @@ export function isResumeActionConfirmed(
 export function nextConversationStateAfterAssistant(assistantReply: string): ConversationState {
   return finalizeAssistantSearchReply(assistantReply).conversationState as ConversationState
 }
+
+export { isPendingSearchConfirmVisible } from './searchPlan.js'
