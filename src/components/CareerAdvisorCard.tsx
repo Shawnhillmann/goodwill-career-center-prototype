@@ -36,7 +36,7 @@ import { consumeAdvisorChatStream } from '../lib/chatStream'
 import { shouldStreamAdvisorReply } from '../lib/streamingPolicy'
 import { createStreamTextReveal } from '../lib/streamTextReveal'
 import { isResumeOutputRequest } from '../lib/resumeTask'
-import { isSearchConfirmationTurn } from '../../shared/searchConfirm'
+import { isSearchConfirmRecoveryVisible, isSearchConfirmationTurn } from '../../shared/searchConfirm'
 import {
   loadPersistedConversationState,
   persistConversationState,
@@ -207,7 +207,7 @@ export function CareerAdvisorCard({
         [...apiMessages].reverse().find((m) => m.role === 'user')?.content?.trim() ?? ''
       const expectResume = Boolean(
         opts?.expectDocument ||
-          (!isSearchConfirmationTurn(conversationState, lastUserContent) &&
+          (!isSearchConfirmationTurn(conversationState, lastUserContent, apiMessages) &&
             isResumeOutputRequest(
               conversationState,
               lastUserContent,
@@ -391,7 +391,7 @@ export function CareerAdvisorCard({
       }
       const apiMessages = toApiMessages(messages, trimmedValue)
       const expectDocument =
-        !isSearchConfirmationTurn(conversationState, trimmedValue) &&
+        !isSearchConfirmationTurn(conversationState, trimmedValue, apiMessages) &&
         isResumeOutputRequest(conversationState, trimmedValue, apiMessages, opts?.quickAction)
       stickToBottomRef.current = true
       if (mobileChatLayout) onMobileHeaderCompactChange?.(true)
@@ -820,10 +820,44 @@ export function CareerAdvisorCard({
     conversationState.pendingSearchPlan?.user_facing_confirmation?.trim() ?? ''
   const showPendingResumeConfirm =
     !awaitingAdvisor && conversationState.pendingAction === 'resume'
+  const showSearchConfirmRecovery = isSearchConfirmRecoveryVisible(
+    messages,
+    conversationState,
+    awaitingAdvisor,
+  )
 
   const handlePendingConfirm = (phrase: string) => {
     sendUserMessage(phrase)
   }
+
+  const handleSearchConfirmRetry = useCallback(() => {
+    const lastAdvisorIndex = messages.map((m) => m.role).lastIndexOf('advisor')
+    const trimmed = lastAdvisorIndex === -1 ? messages : messages.slice(0, lastAdvisorIndex)
+    const lastUser = [...trimmed].reverse().find((m) => m.role === 'user')
+    if (!lastUser) return
+
+    const trimmedValue = (lastUser.value ?? lastUser.text).trim()
+    if (!trimmedValue) return
+
+    const apiMessages = trimmed.map((m) => ({
+      role: (m.role === 'advisor' ? 'assistant' : 'user') as 'user' | 'assistant',
+      content: m.role === 'user' ? (m.value ?? m.text) : m.text,
+    }))
+
+    setConversationState({ pendingAction: null })
+    setMessages(trimmed)
+    stickToBottomRef.current = true
+    if (mobileChatLayout) onMobileHeaderCompactChange?.(true)
+    setAwaitingAdvisor(true)
+    playUserMessageSound()
+    queueAdvisorReply(apiMessages, { uploadedDocumentText: documentContext, source: 'typed' })
+  }, [
+    documentContext,
+    messages,
+    mobileChatLayout,
+    onMobileHeaderCompactChange,
+    queueAdvisorReply,
+  ])
 
   useLayoutEffect(() => {
     if (!mobileChatLayout || chatEmpty) {
@@ -1061,7 +1095,7 @@ export function CareerAdvisorCard({
                 </div>
               ),
             )}
-            {showPendingSearchConfirm || showPendingResumeConfirm ? (
+            {showPendingSearchConfirm || showPendingResumeConfirm || showSearchConfirmRecovery ? (
               <div className="pending-confirm-actions" role="group" aria-label={ ui.quickActionsAria }>
                 {showPendingSearchConfirm ? (
                   <>
@@ -1075,6 +1109,29 @@ export function CareerAdvisorCard({
                     >
                       { ui.confirmSearchAction }
                     </button>
+                  </>
+                ) : null}
+                {showSearchConfirmRecovery ? (
+                  <>
+                    <p className="pending-confirm-actions__summary pending-confirm-actions__summary--recovery">
+                      { ui.searchConfirmRecoveryMessage }
+                    </p>
+                    <div className="pending-confirm-actions__row">
+                      <button
+                        type="button"
+                        className="quick-pill pending-confirm-actions__btn"
+                        onClick={ () => handlePendingConfirm(SEARCH_CONFIRM_PHRASE) }
+                      >
+                        { ui.searchConfirmRecoveryManualConfirm }
+                      </button>
+                      <button
+                        type="button"
+                        className="quick-pill pending-confirm-actions__btn pending-confirm-actions__btn--secondary"
+                        onClick={ handleSearchConfirmRetry }
+                      >
+                        { ui.searchConfirmRecoveryRetry }
+                      </button>
+                    </div>
                   </>
                 ) : null}
                 {showPendingResumeConfirm ? (

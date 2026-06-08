@@ -2386,6 +2386,21 @@ button {
   padding-inline: 1rem;
 }
 
+.pending-confirm-actions__summary--recovery {
+  color: var(--text-primary, #1f2937);
+}
+
+.pending-confirm-actions__row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.pending-confirm-actions__btn--secondary {
+  background: transparent;
+  border: 1px solid var(--border-subtle, #d1d5db);
+}
+
 /* Quick-action carousel (narrow viewports) */
 .quick-carousel {
   width: 100%;

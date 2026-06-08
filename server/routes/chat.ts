@@ -10,6 +10,8 @@ import { buildWebAccessContext, isOpenEndedWebSearchRequest } from '../lib/webAc
 import { invokeAdvisorWebSearch } from '../lib/webSearchExecute.js'
 import { isWebSearchEnabled } from '../lib/webSearchPolicy.js'
 import {
+  createAdvisorStreamSanitizer,
+  enforceSearchConfirmInvariant,
   evaluateSearchWorkflow,
   finalizeAssistantSearchReply,
   isSearchConfirmationTurn,
@@ -124,7 +126,7 @@ chatRouter.post('/', async (req, res) => {
     messages,
     normalizeConversationState(body.conversationState),
   )
-  const searchConfirmationTurn = isSearchConfirmationTurn(conversationState, lastUser)
+  const searchConfirmationTurn = isSearchConfirmationTurn(conversationState, lastUser, messages)
   const resumeDocumentTurn = isResumeDocumentTask(conversationState, lastUser, messages, quickAction)
 
   const resumeOnly = Boolean(lastUser && !searchConfirmationTurn && resumeDocumentTurn)
@@ -201,6 +203,9 @@ chatRouter.post('/', async (req, res) => {
     clientWantsStream: Boolean(body.stream),
     docOnly,
     webSearchExecute,
+    searchWorkflowPhase: searchWorkflow.phase,
+    searchClassification: searchWorkflow.assessment?.classification ?? null,
+    searchIntent: searchWorkflow.searchIntent,
   })
 
   if (userConfirmedSearch) {
@@ -243,6 +248,7 @@ chatRouter.post('/', async (req, res) => {
 
     try {
       let reply = ''
+      const streamSanitizer = createAdvisorStreamSanitizer()
       const result = await streamOpenAiResponsesText({
         apiKey,
         model,
@@ -252,7 +258,8 @@ chatRouter.post('/', async (req, res) => {
         reasoningEffort: 'minimal',
         onDelta: (chunk) => {
           reply += chunk
-          writeSse(res, 'delta', { text: chunk })
+          const visibleChunk = streamSanitizer.push(chunk)
+          if (visibleChunk) writeSse(res, 'delta', { text: visibleChunk })
         },
       })
 
@@ -297,7 +304,7 @@ chatRouter.post('/', async (req, res) => {
 
       const finalized = resumeOnly
         ? { reply, conversationState: clearPendingConversationState() }
-        : finalizeAssistantSearchReply(reply)
+        : enforceSearchConfirmInvariant(finalizeAssistantSearchReply(reply), body.language)
 
       writeSse(res, 'done', {
         reply: finalized.reply,
@@ -405,7 +412,7 @@ chatRouter.post('/', async (req, res) => {
 
     const finalized = resumeOnly
       ? { reply, conversationState: clearPendingConversationState() }
-      : finalizeAssistantSearchReply(reply)
+      : enforceSearchConfirmInvariant(finalizeAssistantSearchReply(reply), body.language)
 
     return res.json({
       reply: finalized.reply,

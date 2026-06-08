@@ -51,6 +51,9 @@ type UiStrings = {
   placeholder: string
   confirmSearchAction: string
   confirmResumeAction: string
+  searchConfirmRecoveryMessage: string
+  searchConfirmRecoveryRetry: string
+  searchConfirmRecoveryManualConfirm: string
   addFile: string
   removeAttachment: string
   uploadingFile: string
@@ -115,6 +118,10 @@ const uiStrings: Record<SupportedLanguage, UiStrings> = {
     placeholder: 'Type or talk here…',
     confirmSearchAction: 'Confirm search',
     confirmResumeAction: 'Generate resume',
+    searchConfirmRecoveryMessage:
+      'Search setup did not finish. You can try confirming anyway, or ask again.',
+    searchConfirmRecoveryRetry: 'Try again',
+    searchConfirmRecoveryManualConfirm: 'Confirm search anyway',
     addFile: 'Add file',
     removeAttachment: 'Remove attachment',
     uploadingFile: 'Uploading…',
@@ -180,6 +187,10 @@ const uiStrings: Record<SupportedLanguage, UiStrings> = {
     placeholder: 'Escribe o habla aquí…',
     confirmSearchAction: 'Confirmar búsqueda',
     confirmResumeAction: 'Generar currículum',
+    searchConfirmRecoveryMessage:
+      'La configuración de la búsqueda no se completó. Puede intentar confirmar de todos modos o volver a preguntar.',
+    searchConfirmRecoveryRetry: 'Intentar de nuevo',
+    searchConfirmRecoveryManualConfirm: 'Confirmar búsqueda de todos modos',
     addFile: 'Agregar archivo',
     removeAttachment: 'Quitar archivo adjunto',
     uploadingFile: 'Subiendo…',
@@ -245,6 +256,10 @@ const uiStrings: Record<SupportedLanguage, UiStrings> = {
     placeholder: 'Scrivi o parla qui…',
     confirmSearchAction: 'Conferma ricerca',
     confirmResumeAction: 'Genera curriculum',
+    searchConfirmRecoveryMessage:
+      'La configurazione della ricerca non è stata completata. Puoi provare a confermare comunque o chiedere di nuovo.',
+    searchConfirmRecoveryRetry: 'Riprova',
+    searchConfirmRecoveryManualConfirm: 'Conferma ricerca comunque',
     addFile: 'Aggiungi file',
     removeAttachment: 'Rimuovi allegato',
     uploadingFile: 'Caricamento…',
@@ -310,6 +325,10 @@ const uiStrings: Record<SupportedLanguage, UiStrings> = {
     placeholder: 'Tape oswa pale isit la…',
     confirmSearchAction: 'Konfime rechèch la',
     confirmResumeAction: 'Kreye rezime a',
+    searchConfirmRecoveryMessage:
+      'Konfigirasyon rechèch la pa fini. Ou ka eseye konfime kanmenm, oswa mande ankò.',
+    searchConfirmRecoveryRetry: 'Eseye ankò',
+    searchConfirmRecoveryManualConfirm: 'Konfime rechèch kanmenm',
     addFile: 'Ajoute fichye',
     removeAttachment: 'Retire fichye a',
     uploadingFile: 'Ap telechaje…',
@@ -375,6 +394,10 @@ const uiStrings: Record<SupportedLanguage, UiStrings> = {
     placeholder: 'Pisz lub mów tutaj…',
     confirmSearchAction: 'Potwierdź wyszukiwanie',
     confirmResumeAction: 'Wygeneruj CV',
+    searchConfirmRecoveryMessage:
+      'Konfiguracja wyszukiwania nie została ukończona. Możesz spróbować potwierdzić mimo to lub zapytać ponownie.',
+    searchConfirmRecoveryRetry: 'Spróbuj ponownie',
+    searchConfirmRecoveryManualConfirm: 'Potwierdź wyszukiwanie mimo to',
     addFile: 'Dodaj plik',
     removeAttachment: 'Usuń załącznik',
     uploadingFile: 'Przesyłanie…',
@@ -440,6 +463,10 @@ const uiStrings: Record<SupportedLanguage, UiStrings> = {
     placeholder: 'Пишите или говорите здесь…',
     confirmSearchAction: 'Подтвердить поиск',
     confirmResumeAction: 'Создать резюме',
+    searchConfirmRecoveryMessage:
+      'Настройка поиска не завершена. Вы можете попробовать подтвердить или спросить снова.',
+    searchConfirmRecoveryRetry: 'Повторить',
+    searchConfirmRecoveryManualConfirm: 'Подтвердить поиск в любом случае',
     addFile: 'Добавить файл',
     removeAttachment: 'Удалить вложение',
     uploadingFile: 'Загрузка…',
@@ -505,6 +532,10 @@ const uiStrings: Record<SupportedLanguage, UiStrings> = {
     placeholder: 'اكتب أو تحدث هنا…',
     confirmSearchAction: 'تأكيد البحث',
     confirmResumeAction: 'إنشاء السيرة الذاتية',
+    searchConfirmRecoveryMessage:
+      'لم يكتمل إعداد البحث. يمكنك محاولة التأكيد على أي حال أو السؤال مرة أخرى.',
+    searchConfirmRecoveryRetry: 'حاول مرة أخرى',
+    searchConfirmRecoveryManualConfirm: 'تأكيد البحث على أي حال',
     addFile: 'إضافة ملف',
     removeAttachment: 'إزالة المرفق',
     uploadingFile: 'جارٍ الرفع…',

@@ -1,4 +1,4 @@
-import { advisorOfferedResumeConfirmation } from './confirmGate.js'
+import { advisorOfferedResumeConfirmation, findActiveSearchPreviewMessage } from './confirmGate.js'
 import {
   EMPTY_CONVERSATION_STATE,
   isSearchActionConfirmed,
@@ -30,6 +30,13 @@ export {
 } from './searchPlan.js'
 export { advisorOfferedSearchPreview } from './confirmGate.js'
 export { extractSearchPlan, finalizeAssistantSearchReply } from './searchFinalize.js'
+export {
+  createAdvisorStreamSanitizer,
+  enforceSearchConfirmInvariant,
+  isSearchConfirmRecoveryVisible,
+  shouldBufferSearchOfferReply,
+  visibleAdvisorStreamText,
+} from './searchSafeguards.js'
 
 export type SearchChatTurn = { role: 'user' | 'assistant'; content: string }
 
@@ -77,7 +84,7 @@ export function findSearchPreviewMessage(messages: SearchChatTurn[]): string {
 }
 
 export function resolveSearchPlan(messages: SearchChatTurn[]): SearchPlan | null {
-  const preview = findSearchPreviewMessage(messages)
+  const preview = findActiveSearchPreviewMessage(messages) || findSearchPreviewMessage(messages)
   if (!preview) return null
   const plan = extractSearchPlan(preview)
   if (!plan || !isExecutableSearchPlan(plan)) return null
@@ -230,6 +237,10 @@ export function buildApprovedSearchQuery(plan: SearchPlan, referenceDate = new D
 export function isSearchConfirmationTurn(
   state: ConversationState | unknown,
   lastUser: string,
+  messages: SearchChatTurn[] = [],
 ): boolean {
-  return isSearchActionConfirmed(lastUser, normalizeConversationState(state))
+  const normalized = messages.length
+    ? reconstructPendingSearchState(messages, normalizeConversationState(state))
+    : normalizeConversationState(state)
+  return isSearchActionConfirmed(lastUser, normalized)
 }
