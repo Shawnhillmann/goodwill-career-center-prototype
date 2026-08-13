@@ -75,7 +75,7 @@ export function QuickActionCarousel({ actions, ariaLabel, onSelect }: QuickActio
             onClick={ () => onSelect(id) }
           >
             <span className="quick-carousel__icon" aria-hidden>
-              <Icon size={ 22 } strokeWidth={ 2 } />
+              <Icon size={ 22 } fill="currentColor" strokeWidth={ 1.5 } />
             </span>
             <span className="quick-carousel__text">
               <span className="quick-carousel__title">{ label }</span>

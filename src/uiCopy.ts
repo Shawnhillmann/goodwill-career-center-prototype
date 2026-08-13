@@ -15,7 +15,9 @@ type UiStrings = {
   resources: string
   liveSupport: string
   liveSupportTitle: string
-  liveSupportVirtualSession: string
+  liveSupportBookingHeading: string
+  liveSupportBookingSubtitle: string
+  liveSupportBookingIframeTitle: string
   liveSupportCentersHeading: string
   liveSupportZipLabel: string
   liveSupportZipPlaceholder: string
@@ -81,8 +83,12 @@ const uiStrings: Record<SupportedLanguage, UiStrings> = {
     resources: 'Resources',
     liveSupport: 'Live Support',
     liveSupportTitle: 'Live support',
-    liveSupportVirtualSession: 'Schedule a virtual session with one of our career coaches (coming soon)',
-    liveSupportCentersHeading: 'Visit or call one of our career centers',
+    liveSupportBookingHeading: 'Book an Appointment',
+    liveSupportBookingSubtitle:
+      'GWCT utilizes Picktime to schedule its virtual appointments. You can select the time that works best for you below.',
+    liveSupportBookingIframeTitle: 'Book a Career Center Appointment',
+    liveSupportCentersHeading:
+      'Prefer an in-person appointment? Visit or call one of our career centers below to get started.',
     liveSupportZipLabel: 'Your ZIP code',
     liveSupportZipPlaceholder: 'Enter ZIP code',
     liveSupportZipHint: 'Enter your ZIP code to see the closest centers first.',
@@ -150,8 +156,12 @@ const uiStrings: Record<SupportedLanguage, UiStrings> = {
     resources: 'Recursos',
     liveSupport: 'Apoyo en vivo',
     liveSupportTitle: 'Apoyo en vivo',
-    liveSupportVirtualSession: 'Programa una sesión virtual con uno de nuestros coaches de carrera (próximamente)',
-    liveSupportCentersHeading: 'Visita o llama a uno de nuestros centros de carrera',
+    liveSupportBookingHeading: 'Reservar una cita',
+    liveSupportBookingSubtitle:
+      'GWCT utiliza Picktime para programar sus citas virtuales. Puedes seleccionar el horario que mejor te convenga a continuación.',
+    liveSupportBookingIframeTitle: 'Reservar una cita en el Career Center',
+    liveSupportCentersHeading:
+      '¿Prefieres una cita en persona? Visita o llama a uno de nuestros centros de carrera a continuación para comenzar.',
     liveSupportZipLabel: 'Tu código postal',
     liveSupportZipPlaceholder: 'Ingresa tu código postal',
     liveSupportZipHint: 'Ingresa tu código postal para ver primero los centros más cercanos.',
@@ -219,8 +229,12 @@ const uiStrings: Record<SupportedLanguage, UiStrings> = {
     resources: 'Risorse',
     liveSupport: 'Supporto dal vivo',
     liveSupportTitle: 'Supporto dal vivo',
-    liveSupportVirtualSession: 'Prenota una sessione virtuale con uno dei nostri career coach (in arrivo)',
-    liveSupportCentersHeading: 'Visita o chiama uno dei nostri centri per la carriera',
+    liveSupportBookingHeading: 'Prenota un appuntamento',
+    liveSupportBookingSubtitle:
+      'GWCT utilizza Picktime per programmare gli appuntamenti virtuali. Puoi selezionare l’orario più comodo per te qui sotto.',
+    liveSupportBookingIframeTitle: 'Prenota un appuntamento al Career Center',
+    liveSupportCentersHeading:
+      'Preferisci un appuntamento di persona? Visita o chiama uno dei nostri centri per la carriera qui sotto per iniziare.',
     liveSupportZipLabel: 'Il tuo CAP',
     liveSupportZipPlaceholder: 'Inserisci il CAP',
     liveSupportZipHint: 'Inserisci il CAP per vedere per primi i centri più vicini.',
@@ -288,8 +302,12 @@ const uiStrings: Record<SupportedLanguage, UiStrings> = {
     resources: 'Resous',
     liveSupport: 'Sipò an dirèk',
     liveSupportTitle: 'Sipò an dirèk',
-    liveSupportVirtualSession: 'Pran yon sesyon vityèl ak youn nan coach karyè nou yo (byento)',
-    liveSupportCentersHeading: 'Vizite oswa rele youn nan sant karyè nou yo',
+    liveSupportBookingHeading: 'Pran yon randevou',
+    liveSupportBookingSubtitle:
+      'GWCT itilize Picktime pou planifye randevou vityèl li yo. Ou ka chwazi lè ki pi bon pou ou anba a.',
+    liveSupportBookingIframeTitle: 'Pran yon randevou nan Career Center',
+    liveSupportCentersHeading:
+      'Ou prefere yon randevou an pèsòn? Vizite oswa rele youn nan sant karyè nou yo anba a pou kòmanse.',
     liveSupportZipLabel: 'Kòd postal ou',
     liveSupportZipPlaceholder: 'Antre kòd postal la',
     liveSupportZipHint: 'Antre kòd postal ou pou w wè sant ki pi pre yo an premye.',
@@ -357,8 +375,12 @@ const uiStrings: Record<SupportedLanguage, UiStrings> = {
     resources: 'Materiały',
     liveSupport: 'Wsparcie na żywo',
     liveSupportTitle: 'Wsparcie na żywo',
-    liveSupportVirtualSession: 'Umów wirtualną sesję z jednym z naszych doradców kariery (wkrótce)',
-    liveSupportCentersHeading: 'Odwiedź lub zadzwoń do jednego z naszych centrów kariery',
+    liveSupportBookingHeading: 'Umów wizytę',
+    liveSupportBookingSubtitle:
+      'GWCT korzysta z Picktime do umawiania wirtualnych spotkań. Poniżej możesz wybrać termin, który Ci najbardziej odpowiada.',
+    liveSupportBookingIframeTitle: 'Umów wizytę w Career Center',
+    liveSupportCentersHeading:
+      'Wolisz spotkanie na miejscu? Odwiedź lub zadzwoń do jednego z naszych centrów kariery poniżej, aby zacząć.',
     liveSupportZipLabel: 'Twój kod pocztowy',
     liveSupportZipPlaceholder: 'Wpisz kod pocztowy',
     liveSupportZipHint: 'Wpisz kod pocztowy, aby najpierw zobaczyć najbliższe centra.',
@@ -426,8 +448,12 @@ const uiStrings: Record<SupportedLanguage, UiStrings> = {
     resources: 'Материалы',
     liveSupport: 'Живая поддержка',
     liveSupportTitle: 'Живая поддержка',
-    liveSupportVirtualSession: 'Запланируйте виртуальную сессию с одним из наших карьерных коучей (скоро)',
-    liveSupportCentersHeading: 'Посетите или позвоните в один из наших карьерных центров',
+    liveSupportBookingHeading: 'Записаться на приём',
+    liveSupportBookingSubtitle:
+      'GWCT использует Picktime для записи на виртуальные встречи. Ниже вы можете выбрать удобное для вас время.',
+    liveSupportBookingIframeTitle: 'Запись на приём в Career Center',
+    liveSupportCentersHeading:
+      'Предпочитаете личную встречу? Посетите или позвоните в один из наших карьерных центров ниже, чтобы начать.',
     liveSupportZipLabel: 'Ваш почтовый индекс',
     liveSupportZipPlaceholder: 'Введите индекс',
     liveSupportZipHint: 'Введите индекс, чтобы сначала увидеть ближайшие центры.',
@@ -495,8 +521,12 @@ const uiStrings: Record<SupportedLanguage, UiStrings> = {
     resources: 'الموارد',
     liveSupport: 'دعم مباشر',
     liveSupportTitle: 'دعم مباشر',
-    liveSupportVirtualSession: 'حدّد جلسة افتراضية مع أحد مدربي المهنة لدينا (قريبًا)',
-    liveSupportCentersHeading: 'زر أو اتصل بأحد مراكز المهنة لدينا',
+    liveSupportBookingHeading: 'احجز موعدًا',
+    liveSupportBookingSubtitle:
+      'تستخدم GWCT منصة Picktime لجدولة مواعيدها الافتراضية. يمكنك اختيار الوقت الأنسب لك أدناه.',
+    liveSupportBookingIframeTitle: 'احجز موعدًا في مركز المهنة',
+    liveSupportCentersHeading:
+      'هل تفضل موعدًا حضوريًا؟ زر أو اتصل بأحد مراكز المهنة لدينا أدناه للبدء.',
     liveSupportZipLabel: 'الرمز البريدي',
     liveSupportZipPlaceholder: 'أدخل الرمز البريدي',
     liveSupportZipHint: 'أدخل الرمز البريدي لعرض أقرب المراكز أولًا.',

@@ -1016,7 +1016,7 @@ export function CareerAdvisorCard({
                     onClick={ () => handleQuickAction(id) }
                   >
                     <span className="quick-pill__icon" aria-hidden>
-                      <Icon size={ 22 } strokeWidth={ 2 } />
+                      <Icon size={ 22 } fill="currentColor" strokeWidth={ 1.5 } />
                     </span>
                     <span aria-hidden>{ label }</span>
                   </button>
@@ -1051,7 +1051,7 @@ export function CareerAdvisorCard({
                   <div className="bubble bubble--user">
                     {msg.attachmentName ? (
                       <div className="bubble__attachment" aria-label={ msg.attachmentName }>
-                        <FileText size={ 16 } strokeWidth={ 2 } aria-hidden />
+                        <FileText size={ 16 } fill="currentColor" strokeWidth={ 0 } aria-hidden />
                         <span className="bubble__attachment-name">{ msg.attachmentName }</span>
                       </div>
                     ) : null}
@@ -1062,7 +1062,7 @@ export function CareerAdvisorCard({
                     ) : null}
                   </div>
                   <span className="msg-avatar msg-avatar--user" aria-hidden>
-                    <UserRound size={ 16 } strokeWidth={ 2 } />
+                    <UserRound size={ 16 } fill="currentColor" strokeWidth={ 0 } />
                   </span>
                 </div>
               ) : (

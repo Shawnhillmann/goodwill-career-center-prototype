@@ -60,13 +60,13 @@ export function ResourcesPage({ language, onBack }: ResourcesPageProps) {
             <article key={ item.title } className="resource-card resource-card--placeholder">
               <div className="resource-card__thumb" aria-hidden>
                 <span className="resource-card__thumb-icon">
-                  <Icon size={ 40 } strokeWidth={ 1.5 } />
+                  <Icon size={ 22 } fill="currentColor" strokeWidth={ 1.5 } />
                 </span>
               </div>
               <div className="resource-card__body">
                 <div className="resource-card__top">
                   <span className="resource-card__icon" aria-hidden>
-                    <Icon size={ 18 } strokeWidth={ 2 } />
+                    <Icon size={ 16 } fill="currentColor" strokeWidth={ 1.5 } />
                   </span>
                   <span className="resource-card__meta">{ item.typeLabel }</span>
                 </div>

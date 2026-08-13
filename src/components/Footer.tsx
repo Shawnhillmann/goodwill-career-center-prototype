@@ -24,16 +24,16 @@ export function Footer({ language }: FooterProps) {
           <div className="site-footer__social-block">
             <div className="site-footer__social">
               <a href="#" className="site-footer__social-btn" aria-label="Facebook">
-                <Facebook size={ 20 } strokeWidth={ 2 } />
+                <Facebook size={ 20 } fill="currentColor" strokeWidth={ 0 } aria-hidden />
               </a>
               <a href="#" className="site-footer__social-btn" aria-label="Instagram">
-                <Instagram size={ 20 } strokeWidth={ 2 } />
+                <Instagram size={ 20 } fill="currentColor" strokeWidth={ 1.75 } aria-hidden />
               </a>
               <a href="#" className="site-footer__social-btn" aria-label="LinkedIn">
-                <Linkedin size={ 20 } strokeWidth={ 2 } />
+                <Linkedin size={ 20 } fill="currentColor" strokeWidth={ 0 } aria-hidden />
               </a>
               <a href="#" className="site-footer__social-btn" aria-label="YouTube">
-                <Youtube size={ 20 } strokeWidth={ 2 } />
+                <Youtube size={ 20 } fill="currentColor" strokeWidth={ 0 } aria-hidden />
               </a>
             </div>
           </div>
