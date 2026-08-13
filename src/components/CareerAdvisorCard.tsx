@@ -1016,7 +1016,7 @@ export function CareerAdvisorCard({
                     onClick={ () => handleQuickAction(id) }
                   >
                     <span className="quick-pill__icon" aria-hidden>
-                      <Icon size={ 22 } fill="currentColor" strokeWidth={ 1.5 } />
+                      <Icon size={ 22 } strokeWidth={ 2 } />
                     </span>
                     <span aria-hidden>{ label }</span>
                   </button>

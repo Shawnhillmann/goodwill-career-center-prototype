@@ -243,7 +243,7 @@ export function Header({ page, compactChat = false, onNavigate, onAdvisorHome, l
             aria-current={ page === 'support' ? 'page' : undefined }
             onClick={ () => onNavigate('support') }
           >
-            <MessageCircle size={ 18 } fill="currentColor" strokeWidth={ 1.5 } aria-hidden />
+            <MessageCircle size={ 18 } strokeWidth={ 2 } aria-hidden />
             <span>{ ui.liveSupport }</span>
           </button>
         </div>

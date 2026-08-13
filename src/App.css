@@ -350,8 +350,13 @@ button {
 }
 
 .site-header__link[aria-current='page'] {
-  background: var(--gw-white);
-  color: var(--gw-blue);
+  background: var(--gw-blue-dark);
+  color: var(--gw-white);
+}
+
+.site-header__link[aria-current='page']:hover {
+  background: #003a74;
+  color: var(--gw-white);
 }
 
 .site-header__cta {
@@ -362,7 +367,7 @@ button {
   padding: 0.45rem 1.1rem;
   border: none;
   background: var(--gw-white);
-  color: var(--gw-blue);
+  color: var(--gw-blue-dark);
   font-family: inherit;
   font-size: 1rem;
   font-weight: 700;
@@ -372,11 +377,12 @@ button {
   flex-shrink: 0;
   box-sizing: border-box;
   white-space: nowrap;
-  transition: background 0.15s ease, box-shadow 0.15s ease;
+  transition: background 0.15s ease, box-shadow 0.15s ease, color 0.15s ease;
 }
 
 .site-header__cta:hover {
   background: var(--gw-blue-soft);
+  color: var(--gw-blue-dark);
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
 }
 
@@ -386,8 +392,9 @@ button {
 }
 
 .site-header__cta[aria-current='page'] {
-  background: var(--gw-blue-soft);
-  box-shadow: inset 0 0 0 2px var(--gw-white);
+  background: var(--gw-white);
+  color: var(--gw-blue-dark);
+  box-shadow: inset 0 0 0 2px var(--gw-blue-dark);
 }
 
 .site-header__controls {
@@ -838,8 +845,8 @@ button {
 }
 
 .site-header__drawer-link[aria-current='page'] {
-  background: rgba(var(--gw-blue-rgb), 0.1);
-  color: var(--gw-blue);
+  background: var(--gw-blue-dark);
+  color: var(--gw-white);
 }
 
 .site-header__drawer-link:focus-visible {
@@ -1684,7 +1691,7 @@ button {
 
 .advisor-card__title {
   margin: 0 0 0.65rem;
-  font-size: clamp(1.25rem, 4vw, 1.5rem);
+  font-size: clamp(1.5rem, 5vw, 1.85rem);
   font-weight: 700;
   color: var(--gw-blue);
   letter-spacing: -0.02em;
@@ -1715,20 +1722,20 @@ button {
 
 .advisor-card__subtitle {
   margin: 0;
-  font-size: clamp(0.9375rem, 2.5vw, 1.0625rem);
-  color: var(--gw-text);
+  font-size: clamp(1.125rem, 3vw, 1.3rem);
+  color: var(--gw-logo-black);
   line-height: 1.55;
-  font-weight: 400;
-  max-width: 34ch;
+  font-weight: 500;
+  max-width: 38ch;
 }
 
 .advisor-card__subtitle-prompt {
   margin: 0.65rem 0 0;
-  font-size: clamp(0.9375rem, 2.5vw, 1.0625rem);
+  font-size: clamp(1.0625rem, 2.8vw, 1.2rem);
   color: var(--gw-logo-black);
   line-height: 1.5;
   font-weight: 600;
-  max-width: 34ch;
+  max-width: 38ch;
 }
 
 /* Desktop/tablet: split layout like mockup */
@@ -1786,24 +1793,25 @@ button {
   }
 
   .advisor-card__title {
-    font-size: clamp(2rem, 3.2vw, 2.65rem);
+    font-size: clamp(2.5rem, 4vw, 3.25rem);
     margin-bottom: 0;
-    line-height: 1.18;
+    line-height: 1.15;
     letter-spacing: -0.025em;
   }
 
   .advisor-card__subtitle {
-    font-size: clamp(1.125rem, 1.85vw, 1.3125rem);
-    line-height: 1.65;
-    max-width: 48ch;
+    font-size: clamp(1.35rem, 2.4vw, 1.7rem);
+    line-height: 1.5;
+    font-weight: 500;
+    max-width: 42ch;
   }
 
   .advisor-card__subtitle-prompt {
     margin: 0;
-    font-size: clamp(1.125rem, 1.85vw, 1.3125rem);
-    line-height: 1.65;
-    font-weight: 500;
-    max-width: 48ch;
+    font-size: clamp(1.25rem, 2.2vw, 1.55rem);
+    line-height: 1.55;
+    font-weight: 600;
+    max-width: 42ch;
   }
 }
 
@@ -1904,13 +1912,13 @@ button {
   }
 
   .advisor-card__title {
-    font-size: 1.2rem;
+    font-size: 1.45rem;
     margin-bottom: 0.35rem;
   }
 
   .advisor-card__subtitle {
-    font-size: 0.9375rem;
-    line-height: 1.4;
+    font-size: 1.125rem;
+    line-height: 1.45;
     max-width: none;
   }
 
